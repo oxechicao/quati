@@ -4,7 +4,8 @@ This is a commandline line tool that help you to work with AI libraries to suppo
 
 It is build in rust.
 
-> Note: The agent setup (copilot, codex) need be done first. The command line will use the agent-cli.
+> Note: The agent setup (e.g copilot, codex) need be done before run the cli.
+> It means, that you need to open, do login, setup etc. Or write a custom agent_command that setup it.
 
 ## Usage
 
@@ -74,7 +75,7 @@ The only diff from save to `update` is that update push the changes to origin.
     It uses the conventional commit pattern to understand where the message starts.
 6. Use the parsed message to run the `git commit -m $MESSAGE`.
 
-In summary:
+In summary, the command bellow does something similar.
 
 ```sh
 # Save git diff, ask copilot-cli to produce a commit message, then use it to commit
