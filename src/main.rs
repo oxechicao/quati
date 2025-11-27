@@ -1,3 +1,8 @@
+mod args;
+
+use args::Args;
+use clap::Parser;
+
 fn main() {
-    println!("Oi mundo");
+    Args::parse();
 }
