@@ -53,8 +53,8 @@ executado. No nosso caso, nosso programa se chamará `quati`.
 A partir daí tudo será como se fosse uma árvore de decisão. Mas, o que seria isso?
 
 Imagine que deseja jantar, você primeiro pode decidir por cozinhar ou comprar a comida.
-Nesse caso a primeira decisão seria `cozinhar` ou `comprar`. Se jantar fosse uma cli,
-teriamos então os dois comandos `jantar cozinhar` ou `jantar comprar`.
+Nesse caso a primeira decisão seria `cozinhar` ou `pedir`. Se jantar fosse uma cli,
+teriamos então os dois comandos `jantar cozinhar` ou `jantar pedir`.
 
 Se decidimos comprar, devemos decidir como iremos comprar, logo poderemos pedir delivery ou ir
 ao um restaurante. Assim, teriamos mais dois commandos agregados, `delivery` ou `local`. Assim
