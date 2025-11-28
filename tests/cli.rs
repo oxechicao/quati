@@ -9,3 +9,12 @@ fn should_show_help() {
         "CLI to manage git changes with AI assistance",
     ));
 }
+
+#[test]
+fn should_show_start_helper() {
+    let mut cmd = cargo_bin_cmd!("quati");
+    cmd.arg("start").arg("--help");
+    cmd.assert().success().stdout(predicate::str::contains(
+        "Start a new branch locally and remotely",
+    ));
+}

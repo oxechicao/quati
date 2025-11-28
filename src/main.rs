@@ -1,8 +1,8 @@
-mod args;
+mod cli_struct;
 
-use args::Args;
 use clap::Parser;
+use cli_struct::Cli;
 
 fn main() {
-    Args::parse();
+    Cli::parse();
 }
