@@ -60,7 +60,7 @@ Se decidimos comprar, devemos decidir como iremos comprar, logo poderemos pedir 
 ao um restaurante. Assim, teriamos mais dois commandos agregados, `delivery` ou `local`. Assim
 um o camando de comprar poderia ser `jantar comprar delivery`.
 
-Se formos desenhar como seria isso mais ou menos assim:
+Se prefir diagramas, seria mais ou menos assim:
 
 ```mermaid
 stateDiagram-v2
