@@ -172,7 +172,7 @@ O próximo atributo definido é o `command` que pode ser utilizado para definir 
 ```toml
 [package]
 name = "quati"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 ...
 ```

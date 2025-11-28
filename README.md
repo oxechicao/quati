@@ -1,5 +1,11 @@
 # Quati  command-line
 
+Versioning on this project mean:
+
+| Major                   | Minor            | Patch                  |
+| ----------------------- | ---------------- | ---------------------- |
+| Break change or release | Finish an "EPIC" | Merge a task/story/fix |
+
 This is a commandline line tool that help you to work with AI libraries to support development.
 
 It is build in rust.
