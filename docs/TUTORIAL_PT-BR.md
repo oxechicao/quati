@@ -4,12 +4,19 @@
 ---
 
 - [Definições técnicas](#definições-técnicas)
+  - [O que é uma CLI?](#o-que-é-uma-cli)
+    - [Argumentos](#argumentos)
+    - [Validações](#validações)
+    - [Testes](#testes)
 - [Etapas de desenvolvimento](#etapas-de-desenvolvimento)
   - [Task 1: Inicializando CLI com o comando help e version](#task-1-inicializando-cli-com-o-comando-help-e-version)
     - [TDLR;](#tdlr)
     - [Objetivo:](#objetivo)
     - [Vamos ao código](#vamos-ao-código)
     - [Epilogo](#epilogo)
+  - [Task 2: Criando comando START](#task-2-criando-comando-start)
+    - [Objetivo](#objetivo-1)
+    - [Vamos ao código](#vamos-ao-código-1)
 
 ---
 
@@ -34,6 +41,214 @@ Quati-cli consistem em 3 comandos: `start`, `save`, `update`.
   - Contrução da CLI: [clap](https://docs.rs/clap/latest/clap/_concepts/index.html)
 - Metodologia de desenvolvimento:
   - Test Driven Development ([TDD](https://pt.wikipedia.org/wiki/Test-driven_development))
+
+### O que é uma CLI?
+
+Nesta sessão buscarei explica a estrutura de uma CLI para que fique mais simples de explicar
+a implementação abaixo.
+
+Basicamente, a CLI consiste de um programa que recebe argumentos que irão definir o que será
+executado. No nosso caso, nosso programa se chamará `quati`.
+
+A partir daí tudo será como se fosse uma árvore de decisão. Mas, o que seria isso?
+
+Imagine que deseja jantar, você primeiro pode decidir por cozinhar ou comprar a comida.
+Nesse caso a primeira decisão seria `cozinhar` ou `comprar`. Se jantar fosse uma cli,
+teriamos então os dois comandos `jantar cozinhar` ou `jantar comprar`.
+
+Se decidimos comprar, devemos decidir como iremos comprar, logo poderemos pedir delivery ou ir
+ao um restaurante. Assim, teriamos mais dois commandos agregados, `delivery` ou `local`. Assim
+um o camando de comprar poderia ser `jantar comprar delivery`.
+
+Se formos desenhar como seria isso mais ou menos assim:
+
+```mermaid
+stateDiagram-v2
+  state "jantar" as j
+  state "cozinhar" as c
+  state "pedir" as p
+  state "delivery" as d
+  state "local" as l
+  state "--app" as a
+  state q1 <<choice>>
+  state q2 <<choice>>
+  state q4 <<choice>>
+  state q5 <<choice>>
+
+  [*] --> j
+  j --> q1
+  q1 --> c: preparar comida
+  c -->  [*]: jantar cozinhar
+  q1 --> p: fazer pedido
+  p --> q2: Como fará o pedido?
+  q2 --> l: Indo ao local
+  l --> [*]: jantar pedir local
+  q2 --> d: pedindo pelo aplicativo
+  d --> q4: Qual aplicativo?
+  q4 --> [*]: jantar pedir delivery
+  q4 --> a: Escolhi o aplicativo
+  a --> q5: Opções
+  q5 --> ifood: --app=ifood
+  q5 --> menuApp: --app=menuApp
+  q5 --> whatsapp: --app=whatsapp
+  ifood --> [*]: jantar pedir delivery --app=ifood
+  menuApp --> [*]: jantar pedir delivery --app=menuApp
+  whatsapp --> [*]: jantar pedir delivery --app=whatsapp
+```
+
+Assim, se você observar o fluxo da árvore, existe caminhos que podem ser seguidos
+para um mesmo objetivo.
+
+Todas as ações que não são opcionais levam a um próximo caminho, já outras pode
+encerrar antes mesmo, e ao fim temos um comando a ser execultado.
+
+A nomeclatura que se usar em uma CLI segue um padrão:
+
+`programa [argumentos_obrigatórios] [--argumentos_opcionais]` ou  
+`programa [argumentos_obrigatórios] [-argumentos_opcionais]`
+
+Tendo isso em mente, agora podemos falar sobre os tipos de argumentos, e como eles são divididos 
+dentro do `clap`.
+
+#### Argumentos
+
+Existem alguns tipos de [argumentos](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#adding-arguments):
+
+- Positionals (Posicional): Que dependem da ordem para ter significado. Necessitam de valores.
+  - Todo campo na struct é um posicional. Logo a ordem influencia.
+- Options (Opções): A maior diferença deles para Positionals é que possuem um prefixo `--` antes do nome e que não independentes de posição. Necessitam de valores.
+  - Necessida da notação mínima `#[arg(short)]`:
+    - Sem parâmetro, é utiliza o mesmo nome definido
+    - `#[arg(short='n')]` = `-n`: Se nenhum long definido, não existirar um valor para `--field`
+- Flags: Semelhantes a Options, mas são condicionais, ON ou OFF. Se existir, ON, se não OFF.
+- Optional (Opcionais):
+  - Todo argumento é por padrão obrigatório. Para modificar isso precisa passar `Option<type>`
+- Defaults (Padrão): Funciona semelhante ao Optional, mas neste caso define um valor padrão para esse fim
+  - `#[arg(default_value_t='something')]`
+- Subcommands (Subcomandos, ou subargumentos):
+  - definido por `#[command(subcommand)]` no campo da struct
+    - O tipo recebido é um enum, que possue `#[derive(Subcommand)]`
+
+Abaixo temos um exemplo na qual retorna os tipos de argumentos:
+
+```rs
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+pub struct Cli {
+    #[command(subcommand)]
+    sub_command: Actions,
+
+    // Run in quiet mode
+    #[arg(short = 'q', long)]
+    optional_flag_argument: Option<bool>,
+}
+
+#[derive(Subcommand)]
+enum Actions {
+    Start {
+        positionin_argument: String,
+
+        #[arg(short = 'N', long = "no-verify", default_value_t = false)]
+        optional_argument_using_default_value: bool,
+    },
+}
+```
+
+Ao executar o `--help`temos:
+
+```
+Usage: quati [OPTIONS] <COMMAND>
+
+Commands:
+  start  
+  help   Print this message or the help of the given subcommand(s)
+
+Options:
+  -q, --optional-flag-argument <OPTIONAL_FLAG_ARGUMENT>  [possible values: true, false]
+  -h, --help                                             Print help
+  -V, --version                                          Print version
+```
+
+Para `start --help`:
+
+```
+Usage: quati start [OPTIONS] <POSITIONIN_ARGUMENT>
+
+Arguments:
+  <POSITIONIN_ARGUMENT>  
+
+Options:
+  -N, --no-verify  
+  -h, --help       Print help
+```
+
+#### Validações
+
+É possível validar os argumentos de uma forma simples:
+
+- [Enum](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#enumerated-values): 
+  utilizando o atributo `#[arg(value_enum)]` e passando um enum como tipo. Somente os valores 
+  listados no enum são aceitos.
+  - **Obs:** Um subcomand funciona de forma similar
+- [Validated Values](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#validated-values):
+  utilizando da macro `clap::value_parser!` é possível efetuar validação e ainda converter tipos.
+  - Utilizando atribut `#[arg=(value_parser = clap::valu_parser!)]`
+    - Exemplo: ` #[arg(value_parser = clap::value_parser!(u16).range(1..))]`
+      - Aceita somente digitos
+- [`ArgGroup` ou `Argument Relations`:](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#argument-relations)
+  - É possível utilizar de duas formas (ou mais :D)
+    - Podemos dizer que uma struct é obrigatória mas não aceita multiplos campos: 
+      ```rs 
+      #[derive(Args)] 
+      #[group(required = true, multiple = false)]
+      struct Vers {
+        A,
+        B
+      }
+      ```
+      - Isso significa que somente um dos campos em Vers pode existir, é um relacionamento XOR, 
+      ou um ou o outro, nunca os 2 ao mesmo tempo.
+    - Ou podemos utilizar de um agrupamento entre argumentos
+      ```rs
+      /// some regular input
+      #[arg(group = "input")]
+      input_file: Option<String>,
+
+      /// some special input argument
+      #[arg(long, group = "input")]
+      spec_in: Option<String>,
+
+      #[arg(short, requires = "input")]
+      config: Option<String>,
+      ```
+      - Isso como resultado, os campos `input_file` e `spec_in` dentro do `group="input"`
+      - O campo `config` só pode existir se alguém do `group="input"` estiver
+- Também existe uma validação customizada, mas não irei abordar aqui, para mais detalhes veja a 
+  [documentação sobre validação customizada](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#custom-validation).
+
+#### Testes
+
+> **Para a nossa alegria :D...**  
+
+Clap possue um método que efetua valdação da estrutura da CLI, 
+ele reporta a maioria dos erros cometidos por devs ao construir uma CLI.
+
+Ao invés de verificar todos os comandos e sub-comandos, basta executar `Command::debug_assert!`.
+Logo basta um único teste para validar toda a estrutura de argumentos:
+
+```rs
+// src/cli_struct.rs
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        crate::cli_struct::Cli::command().debug_assert();
+    }
+}
+```
 
 ## Etapas de desenvolvimento
 
@@ -223,3 +438,34 @@ Conceitos vistos nesta tarefa:
 - Dependência em metadados do pacote (`Cargo.toml`) para obter a versão do binário.
 - Convenções do Cargo sobre layout de projeto (`src`, `tests`, `examples/`, `benches/`).
 - Princípio de Test Driven Development (TDD) aplicado ao desenvolvimento da CLI.
+
+### Task 2: Criando comando START
+
+#### Objetivo
+
+Nesta tarefa iremos criar o comando START. Este comando irá criar uma branch localmente e fazer o
+push na origin.
+
+O camando que iremos implementar rodará das seguinte formas: 
+
+- `quati start`: criará uma branch utilizando o prefixo `wip/` e o nome da branch atual.
+  - Exemplo: dado que estamos na branch main, ao rodar `quati start`, 
+  resutará em uma branch `wip/main`.
+- `quati start minha-branch`: criará uma branch com o nome `wip/minha-branch` no local e na origin.
+- `quati start -N minha-branhc` ou `quati start --no-prefix minha-branch`: 
+  criará uma branch com nome `minha-branch` no local e na origem
+
+Casos de uso
+
+| id  | GIVEN                                                                | WHEN                                                | THEN                                                                                                                                                                                                    |
+| --- | -------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | um repositório git com a origem configurada e com permissões de push | a developer executa `quati start` sem argumentos    | uma nova branch é criada localmente e na origem utilizando o prefixo configurado (padrão `wip/`) com o nome da branch atual (ex: `wip/main`) e a CLI mostra informações das branchs e como encontrá-las |
+| 2   | um repositório git com a origem configurada e com permissões de push | a developer executa `quati start BRANCH_NAME`       | uma nova branch é criada localmente e na origem com o nome `BRANCH_NAME`, e a CLI mostra informações das branchs e como encontrá-las                                                                    |
+| 3   | a branch escolhida já existe localmente                              | a developer executa `quati start [BRANCH]`          | a CLI muda para a nova branch e syncroniza com a origem, e mostra uma descrição do que foi executado                                                                                                    |
+| 4   | there is no `origin` remote or the push fails (network/auth)         | a developer executa qualquer `quati start` variação | a CLI exibe um erro e sugere formas de solucionar o problema (e.g. add remote, check network, retry push, or run manual `git push -u origin <branch>`)                                                  |
+
+#### Vamos ao código
+
+Primeiro iremos criar o teste para este caso.
+
+
