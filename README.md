@@ -93,3 +93,66 @@ git commit -F /tmp/commit_message.txt
 
 When I tried to pass the diff directly via prompt I did not get a good answer.
 The easier solution I found was creating a file and use it as reference.
+
+## Diagrams
+
+```mermaid
+---
+title: User journey
+---
+stateDiagram-v2
+  state "User run the command" as a1
+  C1: Parse the command
+  state if_command <<choice>>
+
+  [*] --> a1: quati
+  a1 --> C1
+  state C1 {
+    state "Check arguments" as c1_a1
+    [*] --> c1_a1: clap parse the arguments
+    state "Define the action" as c1_a2
+    c1_a1 --> c1_a2: clap call the actions implementation
+    state if_c1_a2 <<choice>>
+    c1_a2 --> if_c1_a2: run the actions defined
+    if_c1_a2 --> run_help: quati --help
+    if_c1_a2 --> run_start: quati start
+   }
+
+   help_comp: Command --help
+   run_help --> help_comp
+   state help_comp {
+    state "Print helper text for the CLI" as help_comp_a1
+    [*] --> help_comp_a1: Print helper
+    help_comp_a1 --> [*]
+   }
+
+  start_comp: Command Start
+  run_start --> start_comp
+  state start_comp {
+    state if_start <<choice>>
+    [*] --> if_start: How you the start should run?
+    if_start --> default_branch: create default branch
+    default_branch --> [*]: quati start
+    note left of default_branch
+        Example:
+        git checkout -B wip/main
+        git push origin wip/main
+    end note
+
+    if_start --> default_prefix_branch_name: create with a custom branhc name using default prefix
+    default_prefix_branch_name --> [*]: quati start my-branch
+    note left of default_prefix_branch_name
+        Example:
+        git checkout -B wip/my-branch
+        git push origin wip/my-branch
+    end note
+
+    if_start --> no_prefix_branch: create a branch name with a prefix defined
+    no_prefix_branch --> [*]: quati start my-branch --no-prefix
+    note right of no_prefix_branch
+      Example:
+          git checkout -B my-branch
+          git push origin my-branch
+    end note
+  }
+```
