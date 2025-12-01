@@ -5,24 +5,32 @@ use clap::{Parser, Subcommand};
 #[command(version, about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
-    action: Actions,
+    pub action: Actions,
 
     // Run in quiet mode
     #[arg(short = 'q', long)]
-    quiet: Option<bool>,
+    pub quiet: Option<bool>,
 }
 
 /// Action to perform
 #[derive(Subcommand)]
-enum Actions {
+pub enum Actions {
     /// Start a new branch locally and remotely
     Start {
         /// Name of the new branch
-        branch: String,
+        branch: Option<String>,
 
         /// Skip git hooks
         #[arg(short = 'N', long = "no-verify", default_value_t = false)]
         skip_hooks: bool,
+
+        /// Remove the prefix from the branch name
+        #[arg(short = 'P', long = "no-prefix", default_value_t = false)]
+        remove_prefix: bool,
+
+        /// Do not push the branch to origin
+        #[arg(short = 'S', long = "no-push", default_value_t = false)]
+        no_push: bool,
     },
 }
 

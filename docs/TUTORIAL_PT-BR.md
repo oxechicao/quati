@@ -112,6 +112,10 @@ dentro do `clap`.
 
 #### Argumentos
 
+Argumentos são os parâmetros que eviamos a CLI quando executamos um commando. Eles são separados por um espaço vazio, logo a primeira palavra após o nome do comando já será o primeiro argumentos da CLI.
+
+De uma forma geral, os argumentos se dividem em obrigatórios e opcionais. Os argumentos obrigatórios podem ser posicionais ou não. Os argumentos posicionais dependem da ordem que são definidos, logo se defino que `quati start my-branch` existe, não é possível executar o mesmo comando como `quati my-branch start`. Isso retornará uma falha. Os não posicionais são os chamados de opções (`options`). Eles são obrigatórios, mas não dependem da posição
+
 Existem alguns tipos de [argumentos](https://docs.rs/clap/latest/clap/_derive/_tutorial/index.html#adding-arguments):
 
 - Positionals (Posicional): Que dependem da ordem para ter significado. Necessitam de valores.
