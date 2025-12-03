@@ -6,14 +6,17 @@
     - [Contexto](#contexto)
     - [Implementação](#implementação)
       - [TDD: Primeira iteração - FakeRunner](#tdd-primeira-iteração---fakerunner)
-        - [pub struct RunResult](#pub-struct-runresult)
-        - [Finalizando](#finalizando)
+        - [Explicando o código](#explicando-o-código)
+        - [Implementando pub struct RunResult](#implementando-pub-struct-runresult)
+        - [Finalizando a iteração](#finalizando-a-iteração)
       - [TDD: Segunda iteração - GitRunner](#tdd-segunda-iteração---gitrunner)
-        - [pub trait GitRunner](#pub-trait-gitrunner)
-        - [Finalizando](#finalizando-1)
+        - [Vamos entender as mudanças:](#vamos-entender-as-mudanças)
+        - [Implementando pub trait GitRunner](#implementando-pub-trait-gitrunner)
+        - [Finalizando a iteração](#finalizando-a-iteração-1)
       - [TDD: Terceira iteração - Git, the real implementation](#tdd-terceira-iteração---git-the-real-implementation)
+        - [Explicando o código:](#explicando-o-código-1)
         - [Implementando RealGitRunner e impl Git](#implementando-realgitrunner-e-impl-git)
-        - [Finalizando](#finalizando-2)
+        - [Finalizando a iteração](#finalizando-a-iteração-2)
       - [TDD: Quarta iteração - GitError, melhorando as mensagens de erros](#tdd-quarta-iteração---giterror-melhorando-as-mensagens-de-erros)
     - [Resultado final](#resultado-final)
 
@@ -105,15 +108,15 @@ mod tests {
 }
 ```
 
-Agora, vou explicar o código acima:
+##### Explicando o código
 
-`#[cfg(test)]`: essa definição de atributo de configuração (`cfg`). Isso indicará ao compilador que mod tests na linha seguinte é relacionada aos testes e precisa ser compilado somente quando executamos os testes, `cargo test`.  
-`mod tests {`: inicialização do módulo de tests.  
-`use super::*;`: **super** é uma palavra chave que indica que você acessará algo do módulo parent. No caso dos testes unitários, geralmente (mas, nem sempre), definimos eles no mesmo arquivo, um nível abaixo, da implementação do módulo (se não quando na docs). Então, esta linha de código indica que iremos utilizar de tudo que há no modulo parent, que se no mesmo arquivo, tudo que é publico no arquivo.  
-`struct FakeRunner {`: Aqui começa o nosso mock a existir. Criamos uma estrutura chamada FakeRunner, que é implementada posteriorment.  
-`result: RunResult,`: esse campo da struct FakeRunner significa que o valor result tem o tipo RunResult, que iremos escrever posteriorment.  
-`impl FakeRunner {`: Essa linha representa o início da implementação da struct. Podemos ler como **implementação de FakeRunner**.  
-`fn new(success: bool, stdout: &str, stderr: &str) -> Self {`: Esse linha de impl FakeRunner é um método cujo objetivo é simular os mesmo parâmetros de resposta da estrutura RunResult (que, novamente, será escrita posteriorment).
+- `#[cfg(test)]`: essa definição de atributo de configuração (`cfg`). Isso indicará ao compilador que mod tests na linha seguinte é relacionada aos testes e precisa ser compilado somente quando executamos os testes, `cargo test`.  
+- `mod tests {`: inicialização do módulo de tests.  
+- `use super::*;`: **super** é uma palavra chave que indica que você acessará algo do módulo parent. No caso dos testes unitários, geralmente (mas, nem sempre), definimos eles no mesmo arquivo, um nível abaixo, da implementação do módulo (se não quando na docs). Então, esta linha de código indica que iremos utilizar de tudo que há no modulo parent, que se no mesmo arquivo, tudo que é publico no arquivo.  
+- `struct FakeRunner {`: Aqui começa o nosso mock a existir. Criamos uma estrutura chamada FakeRunner, que é implementada posteriorment.  
+- `result: RunResult,`: esse campo da struct FakeRunner significa que o valor result tem o tipo RunResult, que iremos escrever posteriorment.  
+- `impl FakeRunner {`: Essa linha representa o início da implementação da struct. Podemos ler como **implementação de FakeRunner**.  
+- `fn new(success: bool, stdout: &str, stderr: &str) -> Self {`: Esse linha de impl FakeRunner é um método cujo objetivo é simular os mesmo parâmetros de resposta da estrutura RunResult (que, novamente, será escrita posteriorment).
 
 ```rs
 Self {
@@ -130,7 +133,7 @@ Só com essas implementações da `struct FakeRunner` e `impl FakeRunner` nos "o
 
 Então, vamos implementar a `struct` e assim finalizarmos nossa primeira iteração. E assim, termos o nosso primeiro commit.
 
-##### pub struct RunResult
+##### Implementando pub struct RunResult
 
 Sendo assim, para encapsular a execução do nosso comando Git, primeiro precisaremos criar uma struct relacionada a estrura do resultado.
 
@@ -145,13 +148,14 @@ pub struct RunResult {
 
 Explicando o código:
 
-`#[derive(Clone, Debug)]`, se você entende de Orientação a Objetos, podemos fazer um comparativo dizendo que estamos herdando, nesse caso derivando, os métodos Clone e Debug nativos da linguagem.  
-Isso significa que a struct criada terá os métodos `clone()` e `debug()`, utilizando da macro `derive`.
+- `#[derive(Clone, Debug)]`: 
+  - se você entende de Orientação a Objetos, podemos fazer um comparativo dizendo que estamos herdando, nesse caso derivando, os métodos Clone e Debug nativos da linguagem.  
+  - Isso significa que a struct criada terá os métodos `clone()` e `debug()`, utilizando da macro `derive`.
+- `pub struct RunResult {`:
+  - A definição da struct como pública, permitindo uso fora do módulo (ou simplesmente do arquivo).  
+  - Em Rust, por padrão, tudo é privado, logo precisamos por a notação `pub` em tudo que queremos ter acesso fora do módulo. Acredito que seja uma decisão de segurança :)
 
-`pub struct RunResult {`, a definição da struct como pública, permitindo uso fora do módulo (ou simplesmente do arquivo).  
-Em Rust, por padrão, tudo é privado, logo precisamos por a notação `pub` em tudo que queremos ter acesso fora do módulo. Acredito que seja uma decisão de segurança :)
-
-##### Finalizando
+##### Finalizando a iteração
 
 Execute os testes e vamos ver se eles passam:
 
@@ -187,9 +191,9 @@ Aqui está a implementação já feita acima, vamos evitar nos repetir :)
 }
 ```
 
-Vamos entender as mudanças:
+##### Vamos entender as mudanças:
 
-`impl GitRunner for FakeRunner {`: **impl**ementação de **GitRunner** **para** a estrutura **FakeRunner**. Essa linha indica que estamos implementando uma definição (trait) para estrutura `FakeRunner`. Em orientação a objeto seria como um `extends` ou `implements` e `GitRunner` seria considerada como uma `interface`. A forma como `impl` funciona é interessante, é como se fossemos adicionando novas funcionalidades a estrutura FakeRunner cada vez que utilizamos. A primeira vez, adicionamos new, da segunda vez, utilizamos uma definição (trait) para dizer que função deveriamos implementar.
+- `impl GitRunner for FakeRunner {`: **impl**ementação de **GitRunner** **para** a estrutura **FakeRunner**. Essa linha indica que estamos implementando uma definição (trait) para estrutura `FakeRunner`. Em orientação a objeto seria como um `extends` ou `implements` e `GitRunner` seria considerada como uma `interface`. A forma como `impl` funciona é interessante, é como se fossemos adicionando novas funcionalidades a estrutura FakeRunner cada vez que utilizamos. A primeira vez, adicionamos new, da segunda vez, utilizamos uma definição (trait) para dizer que função deveriamos implementar.
 
 ```rs
 fn run(&mut self, _args: &[&str]) -> std::io::Result<RunResult> {
@@ -197,13 +201,13 @@ fn run(&mut self, _args: &[&str]) -> std::io::Result<RunResult> {
 }
 ```
 
-O código acima representa a função definida no trait `GitRunner`. A assinatura do método, o tipo de retorno, tudo é definido dentro de `GitRunner`. Mas, através de `impl GitRunner for ...` é quando a função realmente é implementada, deixando de ser somente uma assinatura.  
-Nesse caso, nós simplesmente retornamos uma cópia do objeto result, que é definido na função `new`.
+- O código acima representa a função definida no trait `GitRunner`. A assinatura do método, o tipo de retorno, tudo é definido dentro de `GitRunner`. Mas, através de `impl GitRunner for ...` é quando a função realmente é implementada, deixando de ser somente uma assinatura.  
+- Nesse caso, nós simplesmente retornamos uma cópia do objeto result, que é definido na função `new`.
 
 
 Agora vamos implementar `GitRunner` trait que é utilizado como definição para `FakeRunner`
 
-##### pub trait GitRunner
+##### Implementando pub trait GitRunner
 
 ```rs
 pub trait GitRunner {
@@ -213,17 +217,23 @@ pub trait GitRunner {
 
 Vamos entender o código acima:
 
-`pub trait GitRunner {`, assim como para struct, `pub` é utilizado para definir esta trait como publica, com acesso externo.  
-`fn run(&mut self, args: &[&str]) -> std::io::Result<RunResult>;`, é a definição da função `run`.
-
-`fn run` é o nome do método,  
-`&mut self` significa que estamos passando uma referência que pode ser alterada de "si mesmo",  
-`args: &[&str]` significa que podemos receber um array sem limites de valores de texto (string)  
-`std::io::Result<RunResult>;` é outra forma de escrever `Result<RunResult, std::io::Error>`. Isto é usado como retorno de funções IO (input/output, entrada/saída), como é no nosso caso, onde iremos executar um commando git'. O retorno é um `Ok(RunResult)` caso de sucesso, retornando um resultado na estrutura de `RunResult`; Ou um valor de erro `Err(std::io::Error)` do tipo I/O. Esse formato é comumento usado para implementar `?` para propagação de error, bem como funções que executan I/O ou chamam outras API com retorno I/O.
+- `pub trait GitRunner {`:
+  - Assim como para struct, `pub` é utilizado para definir esta trait como publica, com acesso externo.  
+- `fn run(&mut self, args: &[&str]) -> std::io::Result<RunResult>;`:
+  - é a definição da função `run`.
+  - `&mut self` 
+    - significa que estamos passando uma referência que pode ser alterada de "si mesmo",  
+  - `args: &[&str]` 
+    - significa que podemos receber um array sem limites de valores de texto (string)  
+  - `std::io::Result<RunResult>;` 
+    - é outra forma de escrever `Result<RunResult, std::io::Error>`. 
+    - Isto é usado como retorno de funções IO (input/output, entrada/saída), como é no nosso caso, onde iremos executar um commando git'. 
+    - O retorno é um `Ok(RunResult)` caso de sucesso, retornando um resultado na estrutura de `RunResult`; Ou um valor de erro `Err(std::io::Error)` do tipo I/O. 
+    - Esse formato é comumento usado para implementar `?` para propagação de error, bem como funções que executan I/O ou chamam outras API com retorno I/O.
 
 Assim como em Orientação a Objeto, na qual temos uma `interface` que é uma abstração de uma implementação real, e então implementamos uma `classe` que implementa esta `interface` de modo a termos uma classe concreta, em rust faremos algo semelhante.
 
-##### Finalizando
+##### Finalizando a iteração
 
 Vamos então executar nosso teste: 
 
@@ -264,13 +274,17 @@ mod tests {
 }
 ```
 
-Explicando o código:
+##### Explicando o código:
 
-`#[test]`: Esse atributo indica que a função seguinte é um teste  
-`fn returns_branch_name_on_success() {`: Assinatura da função, o nome da função será o nome exibido no terminal.
-`let fake = FakeRunner::new(true, "feature/test-branch\n", "");`: nesta linha inicializamos o nosso mock runner. 
-Nele passamos o valor de sucesso e o nome da branh na qual querermos retornar, o terceiro parâmetro é de erro, não necessário neste teste.  
-`let mut git = Git::with_runner(Box::new(fake));`: Nesta linha implementamos o nossa implementação concreta do trait GitRunner. Iremos implementar a seguir, logo, o teste falhará por isso.
+- `#[test]`: 
+  - Esse atributo indica que a função seguinte é um teste  
+- `fn returns_branch_name_on_success() {`: 
+  - Assinatura da função, o nome da função será o nome exibido no terminal.
+- `let fake = FakeRunner::new(true, "feature/test-branch\n", "");`: 
+  - nesta linha inicializamos o nosso mock runner. 
+  - Nele passamos o valor de sucesso e o nome da branh na qual querermos retornar, o terceiro parâmetro é de erro, não necessário neste teste.  
+- `let mut git = Git::with_runner(Box::new(fake));`: 
+  - Nesta linha implementamos o nossa implementação concreta do trait GitRunner. Iremos implementar a seguir, logo, o teste falhará por isso.
 
 ```rs
 let branch = git
@@ -278,7 +292,9 @@ let branch = git
     .expect("expected branch name on success");
 ```
 
-`assert_eq!(branch, "feature/test-branch");`: aqui temos a nossa validação no teste. Esta linha que indica se o teste foi sucesso.
+- O código acima executa o método de git.
+- `assert_eq!(branch, "feature/test-branch");`: 
+  - aqui temos a nossa validação no teste. Esta linha que indica se o teste foi sucesso.
 
 Agora que entendemos o teste implementado, vamos escrever nosso código para passar
 
@@ -307,9 +323,15 @@ impl GitRunner for RealGitRunner {
 }
 ```
 
-`impl GitRunner for RealGitRunner {`: **implementar** o trait **GitRunner** **para** a estrutura **RealGitRunner**. Parece lógico né? Estamos implementando um `trait` em uma `struct`.
-`fn run(&mut self, args: &[&str]) -> std::io::Result<RunResult> {`: veja que contém a mesma assinatura que o método do trait, isso significa que esta é a implementação real da função.
-`let output = Command::new("git").args(args).output()?;`: Esta linha executa o comando do **git** passando a lista de argumentos.
+Explicando o código
+
+- `impl GitRunner for RealGitRunner {`: 
+  - **implementar** o trait **GitRunner** **para** a estrutura **RealGitRunner**. 
+    - Parece lógico né? Estamos implementando um `trait` em uma `struct`.
+- `fn run(&mut self, args: &[&str]) -> std::io::Result<RunResult> {`:
+  - veja que contém a mesma assinatura que o método do trait, isso significa que esta é a implementação real da função.
+- `let output = Command::new("git").args(args).output()?;`:
+  - Esta linha executa o comando do **git** passando a lista de argumentos.
 
 ```rs
 Ok(RunResult {
@@ -319,7 +341,8 @@ Ok(RunResult {
 })
 ```
 
-As linhas acimas são o retorno de sucesso da chamada da função. Para nosso exemplo, não precisaremos de um retorno de falha `Err()`, pois `output()?` já faz esse papel.
+- As linhas acimas são o retorno de sucesso da chamada da função. 
+- Para nosso exemplo, não precisaremos de um retorno de falha `Err()`, pois `output()?` já faz esse papel.
 
 Agora vamos escrever a nossa implementação final:
 
@@ -366,8 +389,9 @@ pub struct Git {
 }
 ```
 
-O código acima define a estrutura do Git.  
-`runner: Box<dyn GitRunner>,`: Alocação de ponteiro-heap para algum tipo concreto de uma implementação do GitRunner, mas que em tempo de compilação está vazio, pois sua alocação se dá em tempo de execução. **Box<>** é um trait que aloca um espaço na memória heap e armazena um ponteiro próprio para o conteúdo. **dyn GitRunner**, é um trait para objeto que habilita uso dinâmico através de uma [vtable](https://users.rust-lang.org/t/v-tables-differences-between-rust-and-c/92445/2) em tempo de execução.
+- O código acima define a estrutura do Git.  
+- `runner: Box<dyn GitRunner>,`: 
+  - Alocação de ponteiro-heap para algum tipo concreto de uma implementação do GitRunner, mas que em tempo de compilação está vazio, pois sua alocação se dá em tempo de execução. **Box<>** é um trait que aloca um espaço na memória heap e armazena um ponteiro próprio para o conteúdo. **dyn GitRunner**, é um trait para objeto que habilita uso dinâmico através de uma [vtable](https://users.rust-lang.org/t/v-tables-differences-between-rust-and-c/92445/2) em tempo de execução.
 
 Entendido como funciona a estutura, agora vamos a sua implementação:
 
@@ -402,8 +426,10 @@ impl Git {
 }
 ```
 
-`impl Git {`: Inicialização da implementação da struct Git  
-`pub fn real() -> Self {`: Esse método retorna uma implementação "verdadeira" para o uso real. O nome da funcão ser `real()` é uma convenção. Isso indica que este método não retorna um objeto mockado ou alguma versão difereciada.
+- `impl Git {`: 
+  - Inicialização da implementação da struct Git  
+- `pub fn real() -> Self {`: 
+  - Esse método retorna uma implementação "verdadeira" para o uso real. O nome da funcão ser `real()` é uma convenção. Isso indica que este método não retorna um objeto mockado ou alguma versão difereciada.
 
 ```rs
 Self {
@@ -414,8 +440,10 @@ Self {
 Essa parte do método `real()` executa um acesso a variável definida na `struct`. Este termo `Self` indica que estou dentro de um contexto interno.  
 Sendo assim, o método altera o o valor de `runner` com um novo `Box` usando `RealGitRunner` como execultável
 
-`pub fn with_runner(runner: Box<dyn GitRunner>) -> Self {`: este é o maravilhoso método usado no teste. Ele aceita um parâmetro do tipo `Box<dyn GitRunner>` e define ele no runner. Em outras linguagens de programação isso poderia ser chamado de um método `set`, mas por legibilidade `with_algumacoisa()` tem uma melhor legibilidade, sobretudo em chamadas de métodos concatenados.  
-`Self { runner }`: assim, o método somente tem uma definição direta do runner. Como o nome do parâmetro da função é igual ao valor na struct, não se faz necessário escrever `runner: runner`.
+- `pub fn with_runner(runner: Box<dyn GitRunner>) -> Self {`: 
+  - este é o maravilhoso método usado no teste. Ele aceita um parâmetro do tipo `Box<dyn GitRunner>` e define ele no runner. Em outras linguagens de programação isso poderia ser chamado de um método `set`, mas por legibilidade `with_algumacoisa()` tem uma melhor legibilidade, sobretudo em chamadas de métodos concatenados.  
+- `Self { runner }`: 
+  - assim, o método somente tem uma definição direta do runner. Como o nome do parâmetro da função é igual ao valor na struct, não se faz necessário escrever `runner: runner`.
 
 Agora vamos falar do nosso método para consultar a branch:
 
@@ -436,7 +464,10 @@ pub fn get_current_branch_name(&mut self) -> Result<String, String> {
 
 Vamos então explicar o código:
 
-`pub fn get_current_branch_name(&mut self) -> Result<String, String> {`: Aqui temos a assinatura do método onde o parâmetro da função é um `&mut self`. **&mut self** aqui existe por conta da implementação dinâmica do runner. Como a definição do runner não é feita em tempo de compilação, a consequência disso é que precisamos dizer ao nosso método que `self` pode ser alterado a qualquer momento. **Result<String, GitError>** significa que iremos retornar um `Ok()` (para sucesso) ou um `Err()` (para falha), onde o retorno de Ok é uma string e o de Err é um tipo String (Isso irá mudar na próxima iteração para um erro mais customizado).  
+- `pub fn get_current_branch_name(&mut self) -> Result<String, String> {`: 
+  - Aqui temos a assinatura do método onde o parâmetro da função é um `&mut self`. 
+  - **&mut self** aqui existe por conta da implementação dinâmica do runner. Como a definição do runner não é feita em tempo de compilação, a consequência disso é que precisamos dizer ao nosso método que `self` pode ser alterado a qualquer momento. 
+  - **Result<String, GitError>** significa que iremos retornar um `Ok()` (para sucesso) ou um `Err()` (para falha), onde o retorno de Ok é uma string e o de Err é um tipo String (Isso irá mudar na próxima iteração para um erro mais customizado).  
 
 ```rs
 let result = self
@@ -458,15 +489,22 @@ if result.success {
 Nesse trecho de código, temos aqui uma validação do resultado do comando. Caso de sucesso, retornamos uma string. Caso falso, também uma string, mas com mensagem de erro.  
 `Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())`:
 
-- `&result.stdout`: Contém o resultado do comando em um formato de `bytecode`, um `Vec<u8>`. O `&` indica que estamos passando uma referência ao valor, chamamos isso de [`borrowing`](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html). **Borrowing** é um conceito muito necessário em Rust, vale a pena dedicar um tempo lendo sobre.
-- `String::from_utf8_lossy(&result.stdout)`: Converte os bytes em um texto UTF-8. Usamos este método para converter bytes para texto UTF-8 com tolerância a falha, caso dé erro, caracteres como `�` são inseridos como `texto`
-- `.trim()`: remove espaços em branco no início e fim.
-- `.to_string()`: Converte o resultado em um String alocado (owned). Isso garante que quem chama o método irá deter posse do resultado ([ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html)). **Ownership** é outro conceito de extrema importância em rust. 
+- `&result.stdout`: 
+  - Contém o resultado do comando em um formato de `bytecode`, um `Vec<u8>`. 
+  - O `&` indica que estamos passando uma referência ao valor, chamamos isso de [`borrowing`](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html). 
+    - **Borrowing** é um conceito muito necessário em Rust, vale a pena dedicar um tempo lendo sobre.
+- `String::from_utf8_lossy(&result.stdout)`: 
+  - Converte os bytes em um texto UTF-8. Usamos este método para converter bytes para texto UTF-8 com tolerância a falha, caso dé erro, caracteres como `�` são inseridos como `texto`
+- `.trim()`: 
+  - remove espaços em branco no início e fim.
+- `.to_string()`: 
+  - Converte o resultado em um String alocado (owned). Isso garante que quem chama o método irá deter posse do resultado ([ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html)). 
+    - **Ownership** é outro conceito de extrema importância em rust. 
 
 > Em um resumo nada convencional de explicar, ownership e borrowing são os meios do rust de fazer com que a pessoa desenvolvedora seja responsável pelo garbage collector :D
 
 
-##### Finalizando
+##### Finalizando a iteração
 
 Agora com a implementação concluída, vamos verificar se os testes estão passando:
 
