@@ -30,7 +30,7 @@ Então, porque não começar com os testes? ~~Porque é coisa de doido~~
 
 Uma vez ouvi um colega dizer para mim: 
 
-> "Eu dificilmente executo meu código. Geralmente é a ultima etapa, só para ter certeza. Eu sempre utilizo os testes unitários para executar meu código"
+> "Eu dificilmente subo minha aplicação. Geralmente é a ultima etapa, só para ter certeza. Eu sempre utilizo os testes unitários para executar meu código"
 
 Isso mudou mais uma vez meu estilo de programação. Apesar de muitos considerar que testes atrasam uma entrega. Eu digo que testes postergam problemas. O prazo de entrega pode aumentar algund dias, enquanto um prazo de debug tendem a demorar semanas.
 
