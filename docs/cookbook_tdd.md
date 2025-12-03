@@ -1,4 +1,5 @@
-> **Índice**
+> ---
+> # Índice
 
 - [COOKBOOK: Aprendendo com testes](#cookbook-aprendendo-com-testes)
   - [Efetuando mock do Command](#efetuando-mock-do-command)
@@ -6,10 +7,14 @@
     - [Implementação](#implementação)
       - [TDD: Primeira iteração - FakeRunner](#tdd-primeira-iteração---fakerunner)
         - [pub struct RunResult](#pub-struct-runresult)
+        - [Finalizando](#finalizando)
       - [TDD: Segunda iteração - GitRunner](#tdd-segunda-iteração---gitrunner)
         - [pub trait GitRunner](#pub-trait-gitrunner)
+        - [Finalizando](#finalizando-1)
       - [TDD: Terceira iteração - Git, the real implementation](#tdd-terceira-iteração---git-the-real-implementation)
         - [Implementando RealGitRunner e impl Git](#implementando-realgitrunner-e-impl-git)
+        - [Finalizando](#finalizando-2)
+      - [TDD: Quarta iteração - GitError, melhorando as mensagens de erros](#tdd-quarta-iteração---giterror-melhorando-as-mensagens-de-erros)
     - [Resultado final](#resultado-final)
 
 ---
@@ -146,13 +151,20 @@ Isso significa que a struct criada terá os métodos `clone()` e `debug()`, util
 `pub struct RunResult {`, a definição da struct como pública, permitindo uso fora do módulo (ou simplesmente do arquivo).  
 Em Rust, por padrão, tudo é privado, logo precisamos por a notação `pub` em tudo que queremos ter acesso fora do módulo. Acredito que seja uma decisão de segurança :)
 
+##### Finalizando
+
 Execute os testes e vamos ver se eles passam:
 
 ```sh
 cargo test
 ```
 
-Com isso implementado, vamos então fazer nosso primeiro commit: `git add .; git commit -m "feat: wip - implementando estrutura do resultado da consulta do git"`
+Com isso implementado, vamos então fazer nosso primeiro commit: 
+
+```sh
+git add .; 
+git commit -m "feat: wip - implementando estrutura do resultado da consulta do git"
+```
 
 #### TDD: Segunda iteração - GitRunner
 
@@ -211,9 +223,20 @@ Vamos entender o código acima:
 
 Assim como em Orientação a Objeto, na qual temos uma `interface` que é uma abstração de uma implementação real, e então implementamos uma `classe` que implementa esta `interface` de modo a termos uma classe concreta, em rust faremos algo semelhante.
 
-Vamos então executar nosso teste: `cargo test`
+##### Finalizando
 
-Tudo estando OKAY, podemos fazer nosso segundo commit: `git add .; git commit -m "feat: wip implementando trait GitRunner"`
+Vamos então executar nosso teste: 
+
+```sh
+cargo test
+```
+
+Tudo estando OKAY, podemos fazer nosso segundo commit:
+
+```sh
+git add .; 
+git commit -m "feat: wip implementando trait GitRunner"
+```
 
 #### TDD: Terceira iteração - Git, the real implementation
 
@@ -298,9 +321,171 @@ Ok(RunResult {
 
 As linhas acimas são o retorno de sucesso da chamada da função. Para nosso exemplo, não precisaremos de um retorno de falha `Err()`, pois `output()?` já faz esse papel.
 
-Agora vamos escrever a nossa implementação final
+Agora vamos escrever a nossa implementação final:
+
+```rs
+pub struct Git {
+    runner: Box<dyn GitRunner>,
+}
+
+impl Git {
+    /// Create a client that uses the real `git` binary.
+    pub fn real() -> Self {
+        Self {
+            runner: Box::new(RealGitRunner),
+        }
+    }
+
+    /// Create a client with a custom runner (useful for tests).
+    pub fn with_runner(runner: Box<dyn GitRunner>) -> Self {
+        Self { runner }
+    }
+
+    /// Get the current branch name. Returns `Ok(branch)` on success or `Err(GitError)` on failure.
+    pub fn get_current_branch_name(&mut self) -> Result<String, GitError> {
+        let result = self
+            .runner
+            .run(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .map_err(GitError::Io)?;
+
+        if result.success {
+            Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
+        } else {
+            let stderr = String::from_utf8_lossy(&result.stderr).to_string();
+            Err(GitError::GitFailed(stderr))
+        }
+    }
+}
+```
+
+Vamos conversar sobre o código:
+
+```rs
+pub struct Git {
+    runner: Box<dyn GitRunner>,
+}
+```
+
+O código acima define a estrutura do Git.  
+`runner: Box<dyn GitRunner>,`: Alocação de ponteiro-heap para algum tipo concreto de uma implementação do GitRunner, mas que em tempo de compilação está vazio, pois sua alocação se dá em tempo de execução. **Box<>** é um trait que aloca um espaço na memória heap e armazena um ponteiro próprio para o conteúdo. **dyn GitRunner**, é um trait para objeto que habilita uso dinâmico através de uma [vtable](https://users.rust-lang.org/t/v-tables-differences-between-rust-and-c/92445/2) em tempo de execução.
+
+Entendido como funciona a estutura, agora vamos a sua implementação:
+
+```rs
+impl Git {
+    /// Create a client that uses the real `git` binary.
+    pub fn real() -> Self {
+        Self {
+            runner: Box::new(RealGitRunner),
+        }
+    }
+
+    /// Create a client with a custom runner (useful for tests).
+    pub fn with_runner(runner: Box<dyn GitRunner>) -> Self {
+        Self { runner }
+    }
+
+    /// Get the current branch name. Returns `Ok(branch)` on success or `Err(GitError)` on failure.
+    pub fn get_current_branch_name(&mut self) -> Result<String, GitError> {
+        let result = self
+            .runner
+            .run(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .map_err(GitError::Io)?;
+
+        if result.success {
+            Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
+        } else {
+            let stderr = String::from_utf8_lossy(&result.stderr).to_string();
+            Err(GitError::GitFailed(stderr))
+        }
+    }
+}
+```
+
+`impl Git {`: Inicialização da implementação da struct Git  
+`pub fn real() -> Self {`: Esse método retorna uma implementação "verdadeira" para o uso real. O nome da funcão ser `real()` é uma convenção. Isso indica que este método não retorna um objeto mockado ou alguma versão difereciada.
+
+```rs
+Self {
+    runner: Box::new(RealGitRunner),
+}
+```
+
+Essa parte do método `real()` executa um acesso a variável definida na `struct`. Este termo `Self` indica que estou dentro de um contexto interno.  
+Sendo assim, o método altera o o valor de `runner` com um novo `Box` usando `RealGitRunner` como execultável
+
+`pub fn with_runner(runner: Box<dyn GitRunner>) -> Self {`: este é o maravilhoso método usado no teste. Ele aceita um parâmetro do tipo `Box<dyn GitRunner>` e define ele no runner. Em outras linguagens de programação isso poderia ser chamado de um método `set`, mas por legibilidade `with_algumacoisa()` tem uma melhor legibilidade, sobretudo em chamadas de métodos concatenados.  
+`Self { runner }`: assim, o método somente tem uma definição direta do runner. Como o nome do parâmetro da função é igual ao valor na struct, não se faz necessário escrever `runner: runner`.
+
+Agora vamos falar do nosso método para consultar a branch:
+
+```rs
+pub fn get_current_branch_name(&mut self) -> Result<String, String> {
+  let result = self
+      .runner
+      .run(&["rev-parse", "--abbrev-ref", "HEAD"])
+      .output()?
+
+  if result.success {
+      Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
+  } else {
+      Err("We have a problem")
+  }
+}
+```
+
+Vamos então explicar o código:
+
+`pub fn get_current_branch_name(&mut self) -> Result<String, String> {`: Aqui temos a assinatura do método onde o parâmetro da função é um `&mut self`. **&mut self** aqui existe por conta da implementação dinâmica do runner. Como a definição do runner não é feita em tempo de compilação, a consequência disso é que precisamos dizer ao nosso método que `self` pode ser alterado a qualquer momento. **Result<String, GitError>** significa que iremos retornar um `Ok()` (para sucesso) ou um `Err()` (para falha), onde o retorno de Ok é uma string e o de Err é um tipo String (Isso irá mudar na próxima iteração para um erro mais customizado).  
+
+```rs
+let result = self
+    .runner
+    .run(&["rev-parse", "--abbrev-ref", "HEAD"])
+    .output()?
+```
+
+O código acima execulta o comando do git através do runner definido. Isso significa que para usar o método precisamos sempre fazer uma chamada em sequência: `git.real().function_desired()`. Assim garantiremos que sempre teremos um runner definido em tempo de execução.
+
+```rs
+if result.success {
+    Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
+} else {
+    Err("We have a problem")
+}
+```
+
+Nesse trecho de código, temos aqui uma validação do resultado do comando. Caso de sucesso, retornamos uma string. Caso falso, também uma string, mas com mensagem de erro.  
+`Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())`:
+
+- `&result.stdout`: Contém o resultado do comando em um formato de `bytecode`, um `Vec<u8>`. O `&` indica que estamos passando uma referência ao valor, chamamos isso de [`borrowing`](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html). **Borrowing** é um conceito muito necessário em Rust, vale a pena dedicar um tempo lendo sobre.
+- `String::from_utf8_lossy(&result.stdout)`: Converte os bytes em um texto UTF-8. Usamos este método para converter bytes para texto UTF-8 com tolerância a falha, caso dé erro, caracteres como `�` são inseridos como `texto`
+- `.trim()`: remove espaços em branco no início e fim.
+- `.to_string()`: Converte o resultado em um String alocado (owned). Isso garante que quem chama o método irá deter posse do resultado ([ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html)). **Ownership** é outro conceito de extrema importância em rust. 
+
+> Em um resumo nada convencional de explicar, ownership e borrowing são os meios do rust de fazer com que a pessoa desenvolvedora seja responsável pelo garbage collector :D
 
 
+##### Finalizando
+
+Agora com a implementação concluída, vamos verificar se os testes estão passando:
+
+```sh
+cargo test
+```
+
+Com tudo passando corretamente, vamos então efetuar mais um commit :)
+
+```sh
+git add .;
+git commit -m "feat: wip - criada implementação concreta do executável para o Git"
+```
+
+Na próxima iteração iremos concluir a primeira feature adicionando validações para os erros.
+
+#### TDD: Quarta iteração - GitError, melhorando as mensagens de erros
+
+... TODO
 
 ### Resultado final
 
