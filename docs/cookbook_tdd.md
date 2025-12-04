@@ -67,7 +67,7 @@ Os exemplos abaixo foram surgindo de acordo com a minha necessidade e meu aprend
 
 ## Criando um comando para ler o nome da branch
 
-> #test #command #mock
+> #git #command #mock
 
 ### Contexto
 
@@ -160,6 +160,8 @@ Que no nosso exemplo, seria o arquivo onde implementaremos nosso código.
 Em visão orientada a objetos, seria como usar extender de outra classe. 
 Veja os exemplo abaixo.
 
+---
+
 <details>
 <summary>Exemplos de códigos em outras linguagens</summary>
 
@@ -203,6 +205,8 @@ if __name__ == "__main__":
 ```
 
 </details>
+
+---
 
 Se não desejar manter o teste dentro do mesmo arquivo, é possível separar o teste usando a seguinte estrutura.
 
@@ -298,7 +302,7 @@ Ela faz parte da nossa implementação final, logo será definida fora do modulo
 
 #### Implementando pub struct RunResult
 
-Sendo assim, para encapsular a execução do nosso comando Git, primeiro precisaremos criar uma struct relacionada a estrura do resultado.
+RunResult como indiretamente vimos nos testes implementados acima, a estrutura será a seguinte:
 
 ```rs
 #[derive(Clone, Debug)]
@@ -311,14 +315,123 @@ pub struct RunResult {
 
 Explicando o código:
 
-- `#[derive(Clone, Debug)]`: 
-  - se você entende de Orientação a Objetos, podemos fazer um comparativo dizendo que estamos herdando, nesse caso derivando, os métodos Clone e Debug nativos da linguagem.  
-  - Isso significa que a struct criada terá os métodos `clone()` e `debug()`, utilizando da macro `derive`.
-- `pub struct RunResult {`:
-  - A definição da struct como pública, permitindo uso fora do módulo (ou simplesmente do arquivo).  
-  - Em Rust, por padrão, tudo é privado, logo precisamos por a notação `pub` em tudo que queremos ter acesso fora do módulo. Acredito que seja uma decisão de segurança :)
+```rs
+#[derive(Clone, Debug)]
+pub struct RunResult {}
+```
+
+Aqui temos nossa definição de atributo usando a macro `derive`. Essa macro injeta métodos na `struct RunResult`.  
+Logo, temos dois métodos adicionados na `struct`, `clone()` e funcionalidades de debug (`fmt::Debug`).
+
+`clone()` é como o nome diz, clona, ele faz uma cópia da sua estrutura para outra variável.  
+Para que precisamos disso? O que faz de rust ser maravilhoso é seu gerencimaneto de memória.  
+Com isso temos dois conceitos muito fortes no rust chamados `ownership` (posse) e `borrowing` (emprestar).  
+Nesse caso, clone está relacionado a questão da posse.  
+
+---
+
+<details>
+<summary>Explicação de ownership por analogias</summary>
+
+Por exemplo, se você deseja passar um valor de uma variável para outra e simplesmente fizer a atribuição...
+
+
+```rs
+let a = "Oi"
+let b = a
+```
+
+... você está não só atribuindo outra variável, você está passando sua posse para outra variável. O que significa que `a` é uma variável "abandonada" e se você tentar acessar o valor de `a` não será possível.  
+Isso se dá por uma questão de endereço de memória, passar a posse de a para b nada mais é entregar para B o endereço de memória.  
+Imagine que você pediu um delivery de uma pizza no restaurante. O restaurante faz sua pizza e manda pelo entregador, o entregador chega na sua casa e lhe entrega a pizza. Neste exemplo, o restaurante `possui` a pizza, `entrega` a pizza ao motoboy que fará a entrega, e por fim o motoboy `entrega` a pizza a você. Toda vez que há uma ação de `entrega`, há uma tranferência de posse daquele produto. Então:
+
+```rs
+let restaurante = "pizza"
+let motoboy = restaurante
+let fominha = motoboy
+```
+
+Quando utilizamos o método clone e copiamos o valor, o endereço de memória inicial é preservado, pois aquele valor é copiado para um novo endereço de memória e atribuído a uma variável.  
+Logo, podemos fazer uma analogia aleatória com um show de humor. A humorista faz a piada, na qual tem a risada, a risada é compartilhada pelas pessoas, mas cada um possui sua própria risada, e pode ter aquela pessoa que somente riu porque a pessoa do lado riu. Logo:
+
+```rs
+let humorista = "risada"
+let pessoa1 = humorista.clone() // riu da piada
+let pessoa2 = humorista.clone() // riu da piada
+let pessoa3 = pessoa2.clone() // riu da pessoa2
+```
+
+</details>
+
+---
+
+Ao fazer `#[devive(debug)]` implementamos a possibilidade de imprimir/formatar o valor da struct.  
+Logo, é possível executar os comandos abaixos:
+
+```rs
+let r = RunResult { success: true, stdout: b"ok".to_vec(), stderr: vec![] };
+
+println!("{:?}", r);
+println!("{:#?}", r);
+let _ = dbg!(r);
+```
+
+Agora voltamos a observar a estrutura completa
+
+```rs
+#[derive(Clone, Debug)]
+pub struct RunResult {
+    pub success: bool,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+}
+```
+
+Ao definirmos a estrutura (struct) temos a palavra chave `pub`. Ela significa public (público)
+isso significa que nossa estrutura pode ser acessada fora do módulo que ela definiu.  
+Em **RUST** por padrão tudo dentro do módulo é privado, logo, pub se torna necessário para dar acesso externo.
+
+Isso vale também para os campos da `struct`, os campos precisam ser definidos com `pub` caso queira
+dar acesso fora. Por exemplo:
+
+```rs
+pub struct Pizza {
+    pub sabor: String,
+    tempero: String,
+}
+
+let piza = Pizza {
+  sabor = "Sushi",
+  tempero = "brocolis"
+}
+
+println!(piza.sabor) // funciona
+println!(piza.tempero) // não funciona
+```
+
+Os demais campos...
+
+```rs
+pub success: bool,
+pub stdout: Vec<u8>,
+pub stderr: Vec<u8>,
+```
+
+... são definições das variáveis
+
+- `success` é do tipo `bool`, aceitando valores binários como `true` ou `false`
+- `stdout` e `stderr` são do tipo `Vec<u8>`, que significa aceitarem um vertor de `bytes` do tipo `unsigned 8-bit`
+  - Esse formato é util por aceitar dados binários arbitrários (arquivos, saída de processos, rede), não exibindo que seja um UTF-8 válido.
+
+Pronto, assim finalizamos a nossa primeira iteração do TDD.
 
 #### Finalizando a iteração
+
+Na nossa primeira iteração implementamos a estrutura inicial dos testes. 
+Ela basicamente gerou definições e nos forçou a implementar a algumas estruturas.
+Isso é um exemplo de iteração do TDD, não necessariamente precisamos fazer todo o teste para que
+possamos fazer um commit. Neste ponto do código, temos algo funcional e usável, mesmo não tenha uso
+real, mas estamos em `work in progress` (wip) :)
 
 Execute os testes e vamos ver se eles passam:
 
@@ -920,7 +1033,7 @@ mod test {
 }
 ```
 
-
+---
 
 <details>
 
@@ -969,6 +1082,8 @@ mod test {
   ```
 
 </details>
+
+---
 
 #### Código resultante deta iteração
 
