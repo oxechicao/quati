@@ -5,18 +5,25 @@
   - [Criando um comando para ler o nome da branch](#criando-um-comando-para-ler-o-nome-da-branch)
     - [Contexto](#contexto)
     - [Sobre a implementação](#sobre-a-implementação)
-    - [TDD: Primeira iteração - Mock FakeRunner e RunResult](#tdd-primeira-iteração---mock-fakerunner-e-runresult)
-      - [Explicando o código](#explicando-o-código)
-      - [Implementando pub struct RunResult](#implementando-pub-struct-runresult)
+    - [TDD: Primeira iteração - Iniciando nossa função de teste](#tdd-primeira-iteração---iniciando-nossa-função-de-teste)
+      - [`#[cfg(test)]` e `mod tests`](#cfgtest-e-mod-tests)
+      - [`#[tests]` e a função de teste](#tests-e-a-função-de-teste)
+      - [Finalizando a primeira iteração](#finalizando-a-primeira-iteração)
+    - [TDD: Segunda iteração - Inicializando o mock](#tdd-segunda-iteração---inicializando-o-mock)
+      - [Iniciando Mock](#iniciando-mock)
+      - [Criando a inicialização do mock FakeRunner](#criando-a-inicialização-do-mock-fakerunner)
+      - [Implementando método NEW do mock FakeRunner](#implementando-método-new-do-mock-fakerunner)
+      - [Atualizando struct FakeRunner](#atualizando-struct-fakerunner)
+      - [Implementando a estrutura RunResult](#implementando-a-estrutura-runresult)
       - [Finalizando a iteração](#finalizando-a-iteração)
-      - [Código resultante desta iteração](#código-resultante-desta-iteração)
     - [TDD: Segunda iteração - GitRunner](#tdd-segunda-iteração---gitrunner)
       - [O Teste](#o-teste)
       - [Vamos entender as mudanças:](#vamos-entender-as-mudanças)
       - [Implementando pub trait GitRunner](#implementando-pub-trait-gitrunner)
       - [Finalizando a iteração](#finalizando-a-iteração-1)
       - [Código resultante deta iteração](#código-resultante-deta-iteração)
-      - [Explicando o código:](#explicando-o-código-1)
+    - [TDD: Terceira iteração - Git, the real implementation](#tdd-terceira-iteração---git-the-real-implementation)
+      - [Explicando o código:](#explicando-o-código)
       - [Implementando RealGitRunner e impl Git](#implementando-realgitrunner-e-impl-git)
       - [Finalizando a iteração](#finalizando-a-iteração-2)
       - [Código resultante deta iteração](#código-resultante-deta-iteração-1)
@@ -103,36 +110,25 @@ Mocks são simulações de integração real, utilizados principalmente para em 
 de softwares onde eles substituem alguma dependência real. 
 Podendo assim, simular os resultados das suas execuções para um comportamento conhecido e desejado.
 
-### TDD: Primeira iteração - Mock FakeRunner e RunResult
+### TDD: Primeira iteração - Iniciando nossa função de teste
 
-> Recaptulando: A ideia do TDD é primeiro implementar um teste para algo que não existe primeiro, para assim nos forçarmos a desenvolver um código que faça o teste funcionar passar.
+Na nossa primeira iteração iremos inciar a implementação da nossa função de teste.
 
 ```rs
 #[cfg(test)]
 mod tests {
-  use super::*;
+    use super::*;
 
-  struct FakeRunner {
-      result: RunResult,
-  }
-
-  impl FakeRunner {
-      fn new(success: bool, stdout: &str, stderr: &str) -> Self {
-          Self {
-              result: RunResult {
-                  success,
-                  stdout: stdout.as_bytes().to_vec(),
-                  stderr: stderr.as_bytes().to_vec(),
-              },
-          }
-      }
-  }
+    #[test]
+    fn returns_branch_name_on_success() {
+    }
 }
 ```
 
-#### Explicando o código
+Vamos agora entender o que significa esse pedacinho de código. Primeiro, vamos entender como fazemos
+a assinatura dos testes.
 
-Assinatura do teste:
+#### `#[cfg(test)]` e `mod tests`
 
 ```rs
 #[cfg(test)]
@@ -233,6 +229,7 @@ Sendo o arquivo a ser testado nomeado como `git.rs`:
 1. Cria uma pasta com o mesmo nome, no mesmo nível do arquivo. Exemplo: se `src/git.rs`, então temos `src/git/`.
 2. Cria um arquivo tests.rs dentro da pasta criada. Exemplo: `src/git/tests.rs
 3. Ao fim do arquivo `git.rs` adicione a linhas abaixo, identificand que o submodulo chamado tests existe e está configurado para testes.
+
 ```rs
 #[cfg(test)]
 mod tests;
@@ -240,58 +237,192 @@ mod tests;
 
 Assim em `src/git/tests.rs` é possível acessar todos os atributos, inclusive os privados, com `use super::*`.
 
+
+#### `#[tests]` e a função de teste
+
+Agora que entendemos os módulos, vamo ver nosso teste:
+
 ```rs
 #[cfg(test)]
 mod tests {
-    // Restante do código
+    use super::*;
 
+    // Foque nas duas linhas abaixo
+    #[test]
+    fn returns_branch_name_on_success() {}
+}
+```
+
+`#[test]` essa definição de atributo indica que o próximo método é um método de teste, logo será
+execultado quando rodarmos `cargo test`. (se não sabia, esse é o comando para rodar os testes :D)
+
+`fn returns_branch_name_on_success() {}` esta linha define o nome da função de teste, quando
+executarmos o comando `cargo test` esse nome irá ser exibido no terminal, indicando se passou ou não.
+
+#### Finalizando a primeira iteração
+
+Nosso objetivo aqui é criar a função de teste e somente isso. Por que somente? No TDD damos passos
+pequenos, mas andamos somente para frente, confiante de que o que construímos funciona e está validado.
+Qualquer mudança no projeto que fizer o teste quebrar, significa que alguma regra de negócio foi
+drasticamente alterada, atraindo nossa atenção para corrigir o código ou atualizar o testes.
+Os testes não estão escritos em pedra, mas só devem ser mudados como ultima escolha.
+
+Sendo assim, vamos executar nossos testes
+
+```sh
+cargo test
+```
+
+Todos passando, vamos então fazer nosso commit, para registrarmos nosso primeiro `PASS`.
+
+```sh
+git add .
+git commit -m "feat: wip - inicializado os testes"
+```
+
+Agora tudo salvo, vamos continuar para a próxima iteração.
+
+
+### TDD: Segunda iteração - Inicializando o mock
+
+Agora que entendemos a estrutura do teste, vamos agora implementar nossa primeira linha do teste.
+
+#### Iniciando Mock
+
+```rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn returns_branch_name_on_success() {
+        let fake = FakeRunner::new(true, "feature/test-branch\n", ""); // primeira linha do teste
+    }
+}
+```
+
+Nesta linha, estamos criando uma variável `fake`, isso é indicado pela palavra chave `let`.  
+`let fake`
+
+Depois disso, estamos chamando algo, que chama o método new e passa alguns argumentos.  
+Esse algo é o nosso mock, que está nomeado como `FakeRunner`.  
+
+A chamada do método se dá através dos `::`. Essa syntax somente se faz necessária para o primeiro
+método, os posteriores não precisa, mas falaremos mais disso posteriormente.  
+
+Depois são passados 3 argumentos:  
+`true`: O primeiro do tipo boolean, que significa 1 ou 0, ou, verdadeiro ou falso;  
+`"feature/test-branch\n"`: O segundo é uma string, que representa o nome da branch;  
+`""`: O terceiro neste momento é uma string vazia, pois o objetivo é que o terceiro seja a mensagem de erro.
+
+---
+
+<details>
+<summary>Uma conversa sobre TDD, e o porquê de implementar um método que não existe ainda.</summary>
+
+> Lembre-se que no TDD implementamos o teste daquilo que desejamos implementar de verdade.
+Parece bizarro pensar nessa metodologia, a princípio, tipo, por que testar algo que não existe?  
+> 
+> Na verdade, a ideia não é testar algo que não existe, é testar algo que vai existir.  
+> Se pensar da segunda forma, estamos na verdade estamos descrevendo nossos passos.  
+> Quando estudei noções de algoritmos na faculdade, eu tinha que escrever comentários que iriam
+> indicar o que eu deveria implementar. Algo como, "escrever função de soma", "validar se divisor de 3",
+> e por ai vai.  
+> Você consegue ver a semelhança? Ao invés de escrever um comentário, eu escrevo uma linha no teste unitário.  
+> 
+> Assim, estou dizendo para mim que o algoritmo que desejo implementar, eu quero fazer um mock
+> chamado `FakeRunner`, e que esse mock deve receber três argumentos.
+
+</details>
+
+---
+
+#### Criando a inicialização do mock FakeRunner
+
+O teste não executará se tentar agora. Isso por que `FakeRunner` nem se quer existe. 
+
+Vamos então criar o `FakeRunner` que será nosso mock
+
+```rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    ////////////////////////
+    // CÓDIGO NOVO: 
     struct FakeRunner {
-        result: RunResult,
+    }
+    ////////////////////////
+
+    #[test]
+    fn returns_branch_name_on_success() {
+        let fake = FakeRunner::new(true, "feature/test-branch\n", ""); // primeira linha do teste
     }
 }
 ```
 
 Neste trecho do código temos a palavra chave `struct`. Ela é utilizada para definir uma estrutura.  
-Structs podem ser utilizadas para definir diferentes coisas, orientando-se pelo conceito de chave e valor. Em outras linguages, como `typescript`, `struct` pode ser comparado com `types`. Ou em `java` ser comparado a um `record`.
+Structs podem ser utilizadas para definir diferentes coisas, orientando-se pelo conceito de chave e valor. 
 
-> Nota, as comparações feita são para facilitar analogias, não para definir o conceito.
+Em outras linguages, como `typescript`, `struct` pode ser comparado com `types`. 
+Ou em `java` ser comparado a um `record`.
 
-Assim, o código acima define uma estrutura (`struct`) chamada `FakeRunner`. Onde nela temos um valor chamado `result`, cujo o tipo é `RunResult`.  
-Nada disso já foi definido, esse é o intuito do TDD, dizer o que queremos nos testes,
-para só depois implementarmos o que desejamos.
+Assim, o código acima define uma estrutura (`struct`) chamada `FakeRunner`. 
 
-Neste caso, RunResult será outra estrutura que iremos definir posteriormente.
+#### Implementando método NEW do mock FakeRunner
+
+Agora que temos a estrutura do FakeRunner, precisamos implementar o diaxo do método `new`.
 
 ```rs
 #[cfg(test)]
 mod tests {
-    // Restante do código
+    use super::*;
 
+    struct FakeRunner {
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    // Código novo
     impl FakeRunner {
-      fn new(success: bool, stdout: &str, stderr: &str) -> Self {
-          Self {
-              result: RunResult {
-                  success,
-                  stdout: stdout.as_bytes().to_vec(),
-                  stderr: stderr.as_bytes().to_vec(),
-              },
-          }
-      }
-  }
+        fn new(success: bool, stdout: &str, stderr: &str) -> Self {
+            Self {
+                result: RunResult {
+                    success,
+                    stdout: stdout.as_bytes().to_vec(),
+                    stderr: stderr.as_bytes().to_vec(),
+                },
+            }
+        }
+    }
+    ///////////////////////////////////////////////////////////////////
+
+    #[test]
+    fn returns_branch_name_on_success() {
+        let fake = FakeRunner::new(true, "feature/test-branch\n", ""); // primeira linha do teste
+    }
 }
 ```
 
-Aqui temos outra palavra chave `impl`. Esta palavra chave tem um significado semântico para **implementação**.  
-Logo podemos ler esta linha de código como: `impl`ementação para `FakeRunner`.  
-Mas, FakeRunner só tem um valor definido, result, e aqui vemos uma função, como assim?
+Eita que temos mais syntax para explicar agora. :|
 
-`impl` tem mais um papel de adicionar funcionalidade do que modificar, então imagine que você está adicionando uma funcionalidade a struct `FakeRunner`.  
+Aqui temos outra palavra chave `impl`. 
+Esta palavra chave tem um significado semântico para **implementação**.  
+Logo podemos ler esta linha de código como: `impl`ementação para `FakeRunner`.  
+
+`impl` tem um papel de adicionar funcionalidade, então imagine que você está 
+adicionando uma funcionalidade a struct `FakeRunner`.  
 Então, neste caso estamos adicionado a função `new` a struct FakeRunner.
 
-Para definir uma função utilizamos a palavra chave `fn` seguira pelo nome e os argumentos desejados, e por fim o tipo do retorno.  
+Como a struct é só uma definição, ela não possue funções, utilizamos impl para inserir
+funções a estrutura definida.
+
+Para definir uma função utilizamos a palavra chave `fn` seguira pelo nome e os argumentos desejados,
+e por fim o tipo do retorno.  
+
 No nosso exemplo temos `fn new(success: bool, stdout: &str, stderr: &str) -> Self {`.  
-`fn` define que estamos definindo uma função. 
-`new` é p nome da funcão que estamos implementando
+
+`fn` define que estamos definindo uma função.  
+`new` é p nome da funcão que estamos implementando  
 `(success: bool, stdout: &str, stderr: &str)` são os argumentos necessários para a função.
 Aqui temos 3 argumentos, `success` que é do tipo bool (sim ou não, true or false, verdadeiro ou falso); `stdout: &str` e `stderr: &str` são é um atributo de texto (string) que não tomam posse do valor enviado (conceito de [borrowing](https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html));
 
@@ -300,6 +431,7 @@ Qual a vantagem disso? Podemos fazer chamadas concatenadas como por exemplo se t
 
 O mesmo `Self` é utilizado dentro do método `new()`. Isso significa que o retorno do método altera algo interno da estrutura (struct) FakeRunner.  
 Nesse exemplo que retornamos a própria struct com o valor de result alterado.
+Calma, é sabido que não temos ainda um `result` na struct, nem sabemos o que é `RunResult`, mas lembre-se, é TDD ;)
 
 ```rs
 Self {
@@ -311,23 +443,97 @@ Self {
 }
 ```
 
+Queremos retornar um valor estruturado, onde temos o campo result, e este campo contem outra
+estrutura que contém valores, success, stdout, stderr. Logo,
+
 O valor de result será uma `struct RunResult`, que possue em seus campos utilizamos os argumentos enviados na chamada da funcão.  
 `stdout` e `stderr` recebem os valores no formato de um lista de bytes, por terem sidos definidos como `str`, logo `.as_bytes().to_vec()` converte primeiro o valor para bytes e depois transforma isso em uma lista de bytes.  
-Como ainda não implementamos `RunResult` fica estranho ver toda essa conversão acontecendo aqui. Mas, lembre-se implementamos as solução pensando nos testes, e não os teste pensando na solução. Assim, desejamos que a struct RunResult seja definida com stdout e stderr como uma lista de bytes.
+
+Como ainda não implementamos `RunResult` fica estranho ver toda essa conversão acontecendo aqui. 
+Mas, lembre-se, se não existe ainda, é porque estamos só definindo como vai ser.
+
+#### Atualizando struct FakeRunner
+
+Dado que a implementação do método new está retornando uma estrutura que não existe, precisamos implementa-la.
+Assim, o nosso código ficará da seguinte forma.
+
+```rs
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FakeRunner {
+      ////////////////////////////////
+      // Código novo
+      result: RunResult;
+      ////////////////////////////////
+    }
+
+    impl FakeRunner {
+        fn new(success: bool, stdout: &str, stderr: &str) -> Self {
+            Self {
+                result: RunResult {
+                    success,
+                    stdout: stdout.as_bytes().to_vec(),
+                    stderr: stderr.as_bytes().to_vec(),
+                },
+            }
+        }
+    }
+
+    #[test]
+    fn returns_branch_name_on_success() {
+        let fake = FakeRunner::new(true, "feature/test-branch\n", ""); // primeira linha do teste
+    }
+}
+```
+
+Beleza, atualizamos nossa struct com o campo result que possui um tipo `RunResult`, mas agora
+precisamos também criar a struct `RunResult`, pois não podemos finalizar nossa iteração com erro.
 
 A seguir, vamos finalmente implementar nossa estrutura RunResult.
-Ela faz parte da nossa implementação final, logo será definida fora do modulo de testes.
+Como ela também fará parte da nossa implementação final, pois iremos usar essa estrutura como retorno.
+Devemos definir fora do modulo de testes.
 
-#### Implementando pub struct RunResult
+#### Implementando a estrutura RunResult
 
 RunResult como indiretamente vimos nos testes implementados acima, a estrutura será a seguinte:
 
 ```rs
+////////////////////////////////
+// Código novo
 #[derive(Clone, Debug)]
 pub struct RunResult {
     pub success: bool,
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
+}
+////////////////////////////////
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FakeRunner {
+      result: RunResult;
+    }
+
+    impl FakeRunner {
+        fn new(success: bool, stdout: &str, stderr: &str) -> Self {
+            Self {
+                result: RunResult {
+                    success,
+                    stdout: stdout.as_bytes().to_vec(),
+                    stderr: stderr.as_bytes().to_vec(),
+                },
+            }
+        }
+    }
+
+    #[test]
+    fn returns_branch_name_on_success() {
+        let fake = FakeRunner::new(true, "feature/test-branch\n", ""); // primeira linha do teste
+    }
 }
 ```
 
@@ -351,33 +557,32 @@ Nesse caso, clone está relacionado a questão da posse.
 <details>
 <summary>Explicação de ownership por analogias</summary>
 
-Por exemplo, se você deseja passar um valor de uma variável para outra e simplesmente fizer a atribuição...
-
-
-```rs
-let a = "Oi"
-let b = a
-```
-
-... você está não só atribuindo outra variável, você está passando sua posse para outra variável. O que significa que `a` é uma variável "abandonada" e se você tentar acessar o valor de `a` não será possível.  
-Isso se dá por uma questão de endereço de memória, passar a posse de a para b nada mais é entregar para B o endereço de memória.  
-Imagine que você pediu um delivery de uma pizza no restaurante. O restaurante faz sua pizza e manda pelo entregador, o entregador chega na sua casa e lhe entrega a pizza. Neste exemplo, o restaurante `possui` a pizza, `entrega` a pizza ao motoboy que fará a entrega, e por fim o motoboy `entrega` a pizza a você. Toda vez que há uma ação de `entrega`, há uma tranferência de posse daquele produto. Então:
-
-```rs
-let restaurante = "pizza"
-let motoboy = restaurante
-let fominha = motoboy
-```
-
-Quando utilizamos o método clone e copiamos o valor, o endereço de memória inicial é preservado, pois aquele valor é copiado para um novo endereço de memória e atribuído a uma variável.  
-Logo, podemos fazer uma analogia aleatória com um show de humor. A humorista faz a piada, na qual tem a risada, a risada é compartilhada pelas pessoas, mas cada um possui sua própria risada, e pode ter aquela pessoa que somente riu porque a pessoa do lado riu. Logo:
-
-```rs
-let humorista = "risada"
-let pessoa1 = humorista.clone() // riu da piada
-let pessoa2 = humorista.clone() // riu da piada
-let pessoa3 = pessoa2.clone() // riu da pessoa2
-```
+> Por exemplo, se você deseja passar um valor de uma variável para outra e simplesmente fizer a atribuição...
+> 
+> ```rs
+> let a = "Oi"
+> let b = a
+> ```
+> 
+> ... você está não só atribuindo outra variável, você está passando sua posse para outra variável. O que significa que `a` é uma variável "abandonada" e se você tentar acessar o valor de `a` não será possível.  
+> Isso se dá por uma questão de endereço de memória, passar a posse de a para b nada mais é entregar para B o endereço de memória.  
+> Imagine que você pediu um delivery de uma pizza no restaurante. O restaurante faz sua pizza e manda pelo entregador, o entregador chega na sua casa e lhe entrega a pizza. Neste exemplo, o restaurante `possui` a pizza, `entrega` a pizza ao motoboy que fará a entrega, e por fim o motoboy `entrega` a pizza a você. Toda vez que há uma ação de `entrega`, há uma tranferência de posse daquele produto. Então:
+> 
+> ```rs
+> let restaurante = "pizza"
+> let motoboy = restaurante
+> let fominha = motoboy
+> ```
+> 
+> Quando utilizamos o método clone e copiamos o valor, o endereço de memória inicial é preservado, pois aquele valor é copiado para um novo endereço de memória e atribuído a uma variável.  
+> Logo, podemos fazer uma analogia aleatória com um show de humor. A humorista faz a piada, na qual tem a risada, a risada é compartilhada pelas pessoas, mas cada um possui sua própria risada, e pode ter aquela pessoa que somente riu porque a pessoa do lado riu. Logo:
+> 
+> ```rs
+> let humorista = "risada"
+> let pessoa1 = humorista.clone() // riu da piada
+> let pessoa2 = humorista.clone() // riu da piada
+> let pessoa3 = pessoa2.clone() // riu da pessoa2
+> ```
 
 </details>
 
@@ -409,24 +614,34 @@ Ao definirmos a estrutura (struct) temos a palavra chave `pub`. Ela significa pu
 isso significa que nossa estrutura pode ser acessada fora do módulo que ela definiu.  
 Em **RUST** por padrão tudo dentro do módulo é privado, logo, pub se torna necessário para dar acesso externo.
 
-Isso vale também para os campos da `struct`, os campos precisam ser definidos com `pub` caso queira
-dar acesso fora. Por exemplo:
 
-```rs
-pub struct Pizza {
-    pub sabor: String,
-    tempero: String,
-}
+---
 
-let piza = Pizza {
-  sabor = "Sushi",
-  tempero = "brocolis"
-}
+<details>
+<summary>Explicando com exemplo o conceito de pub</summary>
 
-println!(piza.sabor) // funciona
-println!(piza.tempero) // não funciona
-```
+> Isso vale também para os campos da `struct`, os campos precisam ser definidos com `pub` caso queira
+> dar acesso fora. Por exemplo:
+> 
+> ```rs
+> pub struct Pizza {
+>     pub sabor: String,
+>     tempero: String,
+> }
+> 
+> let piza = Pizza {
+>   sabor = "Sushi",
+>   tempero = "brocolis"
+> }
+> 
+> println!(piza.sabor) // funciona
+> println!(piza.tempero) // não funciona
+> ```
 
+</details>
+
+---
+ 
 Os demais campos...
 
 ```rs
@@ -441,16 +656,12 @@ pub stderr: Vec<u8>,
 - `stdout` e `stderr` são do tipo `Vec<u8>`, que significa aceitarem um vertor de `bytes` do tipo `unsigned 8-bit`
   - Esse formato é util por aceitar dados binários arbitrários (arquivos, saída de processos, rede), não exibindo que seja um UTF-8 válido.
 
-Pronto, assim finalizamos a nossa primeira iteração do TDD.
-
 #### Finalizando a iteração
 
-Na nossa primeira iteração implementamos a estrutura inicial dos testes. 
-Ela basicamente gerou definições e nos forçou a implementar a algumas estruturas.
-Isso é um exemplo de iteração do TDD, não necessariamente precisamos fazer todo o teste para que
-possamos fazer um commit. Neste ponto do código, temos algo funcional e usável, mesmo não tenha uso
-real, mas estamos em `work in progress` (wip) :)
+Nesta iteração vimos muitos conceitos e syntax novas, falamos de ownership, borrowing, pub, impl.  
+Se desejar ter mais detalhes sobre, a documentação do rust é bem completa :)
 
+Agora vamos finalizar nossa iteração.  
 Execute os testes e vamos ver se eles passam:
 
 ```sh
@@ -461,40 +672,19 @@ Com isso implementado, vamos então fazer nosso primeiro commit:
 
 ```sh
 git add .; 
-git commit -m "feat: wip - implementando estrutura do resultado da consulta do git"
+git commit -m "feat: wip - inicializando mock e adicionando estrutura da resposta"
 ```
 
-#### Código resultante desta iteração
+---
+> ---
+> **Daqui pra baixo temos a versão antiga do texto** 
+>
+> Estou atualizando a didática para ser mais próxima a como eu faria no "mundo real".
+> 
 
-```rs
-#[derive(Clone, Debug)]
-pub struct RunResult {
-    pub success: bool,
-    pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
-}
+---
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  struct FakeRunner {
-      result: RunResult,
-  }
-
-  impl FakeRunner {
-      fn new(success: bool, stdout: &str, stderr: &str) -> Self {
-          Self {
-              result: RunResult {
-                  success,
-                  stdout: stdout.as_bytes().to_vec(),
-                  stderr: stderr.as_bytes().to_vec(),
-              },
-          }
-      }
-  }
-}
-```
+````
 
 ### TDD: Segunda iteração - GitRunner
 
@@ -635,7 +825,9 @@ mod tests {
     impl GitRunner for FakeRunner {
         fn run(&mut self, _args: &[&str]) -> std::io::Result<RunResult> {
             Ok(self.result.clone())
-   
+        }
+    }
+```
 
 ### TDD: Terceira iteração - Git, the real implementation
 
