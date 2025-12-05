@@ -9,19 +9,19 @@
       - [Explicando o código](#explicando-o-código)
       - [Implementando pub struct RunResult](#implementando-pub-struct-runresult)
       - [Finalizando a iteração](#finalizando-a-iteração)
-      - [Código resultante deta iteração](#código-resultante-deta-iteração)
+      - [Código resultante desta iteração](#código-resultante-desta-iteração)
     - [TDD: Segunda iteração - GitRunner](#tdd-segunda-iteração---gitrunner)
+      - [O Teste](#o-teste)
       - [Vamos entender as mudanças:](#vamos-entender-as-mudanças)
       - [Implementando pub trait GitRunner](#implementando-pub-trait-gitrunner)
       - [Finalizando a iteração](#finalizando-a-iteração-1)
-      - [Código resultante deta iteração](#código-resultante-deta-iteração-1)
-    - [TDD: Terceira iteração - Git, the real implementation](#tdd-terceira-iteração---git-the-real-implementation)
+      - [Código resultante deta iteração](#código-resultante-deta-iteração)
       - [Explicando o código:](#explicando-o-código-1)
       - [Implementando RealGitRunner e impl Git](#implementando-realgitrunner-e-impl-git)
       - [Finalizando a iteração](#finalizando-a-iteração-2)
-      - [Código resultante deta iteração](#código-resultante-deta-iteração-2)
+      - [Código resultante deta iteração](#código-resultante-deta-iteração-1)
     - [TDD: Quarta iteração - GitError, melhorando as mensagens de erros](#tdd-quarta-iteração---giterror-melhorando-as-mensagens-de-erros)
-      - [Código resultante deta iteração](#código-resultante-deta-iteração-3)
+      - [Código resultante deta iteração](#código-resultante-deta-iteração-2)
     - [Resultado final](#resultado-final)
 
 ---
@@ -71,19 +71,37 @@ Os exemplos abaixo foram surgindo de acordo com a minha necessidade e meu aprend
 
 ### Contexto
 
-Estou criando uma função que irá executar um commando no terminal para saber qual o nome da branch do git que estou no momento.
+COMO uma pessoa desenvolvedora
+EU QUERO executar comandos git
+PARA que eu possa consultar o nome da branch atual
 
 O comando git para isso é: `git rev-parse --abbrev-ref HEAD`.
 
+Tendo em vista o que queremos fazer e o comando que precisaremos executar, vamos pensar nos critérios.
+
+1. A função deve ser executar o comando git.
+2. A função deve receber vários argumentos que juntos irão compor o comando do git
+3. Se ocorrer bem, quero ser capaz de ver o resultado.
+4. Se algo falha ocorrer, quero ser capaz de ler uma mensagem de erro que me ajude a executar corretamente.
+
+Pronto, agora temos uma ideia básica de como isso tudo funcionará.
+
 ### Sobre a implementação
 
-Para escrevermos o teste desta execução, precisaremos encapsular a execução do comando de forma que possa receber o executável como parâmetro.  
-Isso será usado para podemos efetuar um mock do executável.
+Iremos implementar o nosso projeto buscando seguir o TDD. 
+Assim, vamos pensar em pequenos passos, que serão as iterações, e dividiremos as etapas desta forma.
 
-> Mock:
-> Mocks são simulações de algo real, utilizados principalmente para em testes de softwares onde substituem aluma dependência real. Podendo assim, controlar os resultados dessa dependência.
+Cada etapa irá implementar uma porção do código, executar teste para validar que nada está quebrado,
+faremos um commit para fecharmos essa etapa, e assim temos um ponto de retorno em caso de algum problema.
 
-Então, vamos implementar nosso teste primeiro.
+Nos testes unitários não devemos depender do ambiente externo a aplicação para validarmos o código.
+Quando quiser validar a funcionalidade desta forma, faremos um teste de integração :)
+
+Assim, para não dependermos do ambiente externo utilizaremos um conceito que abstrai estas dependências,
+os mocks.
+Mocks são simulações de integração real, utilizados principalmente para em testes unitários 
+de softwares onde eles substituem alguma dependência real. 
+Podendo assim, simular os resultados das suas execuções para um comportamento conhecido e desejado.
 
 ### TDD: Primeira iteração - Mock FakeRunner e RunResult
 
@@ -446,7 +464,7 @@ git add .;
 git commit -m "feat: wip - implementando estrutura do resultado da consulta do git"
 ```
 
-#### Código resultante deta iteração
+#### Código resultante desta iteração
 
 ```rs
 #[derive(Clone, Debug)]
@@ -480,16 +498,38 @@ mod tests {
 
 ### TDD: Segunda iteração - GitRunner
 
+Agora que temos uma estrutura de resposta, precisamos pensar numa estrutura para executar o código.
+
+Então, o que queremos fazer?  
+Queremos ser capaz de executar um comando git passando uma lista de argumentos para ele.
+
+Pensando agora na ideia do mock, nós temos a `struct FakeRunner`, que representa nosso mock para
+executar um comando `git`.  
+Se desejamos criar uma função na qual recebe argumentos para executar um comando git, para testar
+nosso mock precisa fazer o mesmo.
+
+Existe uma conceito nas linguagens orientada a objetos chamados de `interface`. Uma interface cria
+um modelo de assinaturas de funções na qual toda classe que indica que a implementa,
+precisará implementar os métodos listados por ela, com a mesma assinatura, e o mesmo retorno.  
+Na orientação a objetos isso nos traz a vantagem de podemos usar a interface como o tipo o tipo para
+uma variável, tendo assim a certeza que aquele objetos possuem as funções definidas pela interface.
+
+Em Rust também temos algo *similar* (similar, mas não igual) chamado de `trait`. Os traits podem definir
+métodos na qual precisam ser implementados por aqueles que dizem que implementa. Logo, teremos as
+mesmas funções, com os mermos argumentos e tipos de retornos, para todas as estruturas que o implementam.
+
+#### O Teste
+
+Sabendo da existência do `trait`, podemos usar este conceito para garantir que nosso mock tenha a
+mesma chamada de método que a nossa implementação real. Tendo isso em mente, vamos então dizer em
+nosso teste que teremos um `trait` chamado `GitRunner`
+
 ```rs
+// ...códigos da Primeira iteração
+
 #[cfg(test)]
 mod tests {
-    use super::*;
-/*
-Aqui está a implementação já feita acima, vamos evitar nos repetir :)
-
-    struct FakeRunner {}
-    impl FakeRunner {}
-*/
+  // ...códigos da Primeira iteração
 
     impl GitRunner for FakeRunner {
         fn run(&mut self, _args: &[&str]) -> std::io::Result<RunResult> {
@@ -498,6 +538,8 @@ Aqui está a implementação já feita acima, vamos evitar nos repetir :)
     }
 }
 ```
+
+Logo, com essa impelementação, nós definimos que nosso modk
 
 #### Vamos entender as mudanças:
 
@@ -593,10 +635,7 @@ mod tests {
     impl GitRunner for FakeRunner {
         fn run(&mut self, _args: &[&str]) -> std::io::Result<RunResult> {
             Ok(self.result.clone())
-        }
-    }
-}
-```
+   
 
 ### TDD: Terceira iteração - Git, the real implementation
 
@@ -971,7 +1010,6 @@ mod tests {
     }
 }
 ```
-
 
 ### TDD: Quarta iteração - GitError, melhorando as mensagens de erros
 
