@@ -7,8 +7,15 @@
 // use git::get_current_branch_name;
 // use start::run_start;
 
+use std::process::Command;
+
 fn main() {
     println!("This is a placeholder for the main function.");
+    let mut runner = RealCommandRunner;
+    match get_current_branch_name(&mut runner) {
+        Ok(branch) => println!("Current branch: {}", branch),
+        Err(e) => eprintln!("Error: {}", e),
+    }
     // let cli = Cli::parse();
 
     // match cli.action {
@@ -109,6 +116,14 @@ mod tests {
 
         let result = get_current_branch_name(&mut runner).unwrap();
         assert_eq!(result, "feature/test");
+    }
+
+    #[test]
+    fn test_with_real_runner() {
+        let mut runner = RealCommandRunner;
+        let result = get_current_branch_name(&mut runner);
+        assert!(result.is_ok());
+        println!("Current branch: {}", result.unwrap());
     }
 
 }
