@@ -5,15 +5,13 @@ mod git;
 
 // use clap::Parser;
 // use cli_struct::{Actions, Cli};
-use command_runner::{RealCommandRunner};
-use git::{get_current_branch_name};
+use git::{Git};
 // use start::run_start;
 
 
 fn main() {
     println!("This is a placeholder for the main function.");
-    let mut runner = RealCommandRunner;
-    match get_current_branch_name(&mut runner) {
+    match Git::real().get_current_branch_name() {
         Ok(branch) => println!("Current branch: {}", branch),
         Err(e) => eprintln!("Error: {}", e),
     }
