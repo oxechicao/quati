@@ -1,13 +1,12 @@
-// mod cli_struct;
+// mod cli;
 mod command_runner;
 mod git;
 // mod start;
 
 // use clap::Parser;
 // use cli_struct::{Actions, Cli};
-use git::{Git};
+use git::Git;
 // use start::run_start;
-
 
 fn main() {
     println!("This is a placeholder for the main function.");
@@ -36,4 +35,3 @@ fn main() {
     //     }
     // }
 }
-
