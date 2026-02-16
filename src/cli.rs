@@ -32,13 +32,20 @@ pub enum Actions {
         #[arg(short = 'S', long = "no-push", default_value_t = false)]
         no_push: bool,
     },
+    /// Action to do the commit with AI Assistance
+    Save {
+        /// Path to the file with some context to help the AI to generate the
+        /// commit message
+        context: Option<String>,
+    },
 }
 
 #[cfg(test)]
 mod tests {
+    use clap::CommandFactory;
+
     #[test]
     fn verify_cli() {
-        use clap::CommandFactory;
-        crate::cli_struct::Cli::command().debug_assert();
+        crate::cli::Cli::command().debug_assert();
     }
 }

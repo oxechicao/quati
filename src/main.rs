@@ -1,10 +1,12 @@
-// mod cli;
+mod cli;
 mod command_runner;
 mod git;
 // mod start;
 
+use clap::Parser;
 // use clap::Parser;
 // use cli_struct::{Actions, Cli};
+use cli::{Actions, Cli};
 use git::Git;
 // use start::run_start;
 
@@ -14,24 +16,19 @@ fn main() {
         Ok(branch) => println!("Current branch: {}", branch),
         Err(e) => eprintln!("Error: {}", e),
     }
-    // let cli = Cli::parse();
 
-    // match cli.action {
-    //     Actions::Start {
-    //         branch,
-    //         skip_hooks,
-    //         remove_prefix,
-    //         no_push,
-    //     } => {
-    //         run_start(
-    //             branch
-    //                 .as_deref()
-    //                 .unwrap_or(get_current_branch_name().as_str())
-    //                 .to_string(),
-    //             skip_hooks,
-    //             remove_prefix,
-    //             no_push,
-    //         );
-    //     }
-    // }
+    let cli = Cli::parse();
+    match cli.action {
+        Actions::Start {
+            branch,
+            skip_hooks,
+            remove_prefix,
+            no_push,
+        } => {
+            Git::real().create_branch(branch.as_deref());
+        }
+        Actions::Save { context } => {
+            println!("Saving with context: {:?}", context);
+        }
+    }
 }

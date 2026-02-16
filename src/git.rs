@@ -1,6 +1,6 @@
+use crate::command_runner::{CommandRunner, RealCommandRunner};
 #[cfg(test)]
 use crate::command_runner::{MockCommandRunner, RunResult};
-use crate::command_runner::{CommandRunner, RealCommandRunner};
 
 pub struct Git<R: CommandRunner> {
     runner: R,
@@ -60,7 +60,8 @@ impl<R: CommandRunner> Git<R> {
             return Err("Cannot delete the main branch".to_string());
         }
 
-        self.runner.run("git", &["checkout", "main"])
+        self.runner
+            .run("git", &["checkout", "main"])
             .map_err(|e| format!("Failed to checkout main branch: {}", e))?;
 
         let result = self
@@ -96,11 +97,10 @@ impl Git<MockCommandRunner> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command_runner::{RunResult};
+    use crate::command_runner::RunResult;
 
     #[test]
     fn should_return_branch_name() {
