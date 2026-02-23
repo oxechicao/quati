@@ -37,6 +37,9 @@ pub enum Actions {
         /// Path to the file with some context to help the AI to generate the
         /// commit message
         context: Option<String>,
+
+        /// Scope of the commit message, to be used in the subject
+        scope: Option<String>,
     },
 }
 

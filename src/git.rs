@@ -7,6 +7,22 @@ pub struct Git<R: CommandRunner> {
 }
 
 impl<R: CommandRunner> Git<R> {
+    pub fn add_all(&mut self) -> Result<(), String> {
+        let result = self
+            .runner
+            .run("git", &["add", "."])
+            .map_err(|e| format!("Failed to add files: {}", e))?;
+
+        if result.success {
+            Ok(())
+        } else {
+            Err(format!(
+                "Error adding files: {}",
+                String::from_utf8_lossy(&result.stderr)
+            ))
+        }
+    }
+
     pub fn get_current_branch_name(&mut self) -> Result<String, String> {
         let result = self
             .runner
@@ -50,6 +66,38 @@ impl<R: CommandRunner> Git<R> {
                     String::from_utf8_lossy(&result.stderr)
                 ))
             }
+        }
+    }
+
+    pub fn get_diff(&mut self) -> Result<String, String> {
+        let result = self
+            .runner
+            .run("git", &["diff"])
+            .map_err(|e| format!("Failed to get diff: {}", e))?;
+
+        if result.success {
+            Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
+        } else {
+            Err(format!(
+                "Error getting diff: {}",
+                String::from_utf8_lossy(&result.stderr)
+            ))
+        }
+    }
+
+    pub fn commit_changes(&mut self, message: &str) -> Result<(), String> {
+        let result = self
+            .runner
+            .run("git", &["commit", "-am", message])
+            .map_err(|e| format!("Failed to commit changes: {}", e))?;
+
+        if result.success {
+            Ok(())
+        } else {
+            Err(format!(
+                "Error committing changes: {}",
+                String::from_utf8_lossy(&result.stderr)
+            ))
         }
     }
 
@@ -112,6 +160,18 @@ mod tests {
 
         let result = git.get_current_branch_name().unwrap();
         assert_eq!(result, "feature/test");
+    }
+
+    #[test]
+    fn should_return_diff() {
+        let mut git = Git::with_mock(RunResult {
+            success: true,
+            stdout: b"diff --git a/file.txt b/file.txt\n".to_vec(),
+            stderr: vec![],
+        });
+
+        let result = git.get_diff().unwrap();
+        assert_eq!(result, "diff --git a/file.txt b/file.txt");
     }
 
     #[test]

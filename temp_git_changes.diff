@@ -1,0 +1,175 @@
+diff --git a/src/cli.rs b/src/cli.rs
+index e88d2f4..7f1b115 100644
+--- a/src/cli.rs
++++ b/src/cli.rs
+@@ -37,6 +37,9 @@ pub enum Actions {
+         /// Path to the file with some context to help the AI to generate the
+         /// commit message
+         context: Option<String>,
++
++        /// Scope of the commit message, to be used in the subject
++        scope: Option<String>,
+     },
+ }
+ 
+diff --git a/src/git.rs b/src/git.rs
+index 5c3ff54..7e2265a 100644
+--- a/src/git.rs
++++ b/src/git.rs
+@@ -7,6 +7,22 @@ pub struct Git<R: CommandRunner> {
+ }
+ 
+ impl<R: CommandRunner> Git<R> {
++    pub fn add_all(&mut self) -> Result<(), String> {
++        let result = self
++            .runner
++            .run("git", &["add", "."])
++            .map_err(|e| format!("Failed to add files: {}", e))?;
++
++        if result.success {
++            Ok(())
++        } else {
++            Err(format!(
++                "Error adding files: {}",
++                String::from_utf8_lossy(&result.stderr)
++            ))
++        }
++    }
++
+     pub fn get_current_branch_name(&mut self) -> Result<String, String> {
+         let result = self
+             .runner
+@@ -53,6 +69,38 @@ impl<R: CommandRunner> Git<R> {
+         }
+     }
+ 
++    pub fn get_diff(&mut self) -> Result<String, String> {
++        let result = self
++            .runner
++            .run("git", &["diff"])
++            .map_err(|e| format!("Failed to get diff: {}", e))?;
++
++        if result.success {
++            Ok(String::from_utf8_lossy(&result.stdout).trim().to_string())
++        } else {
++            Err(format!(
++                "Error getting diff: {}",
++                String::from_utf8_lossy(&result.stderr)
++            ))
++        }
++    }
++
++    pub fn commit_changes(&mut self, message: &str) -> Result<(), String> {
++        let result = self
++            .runner
++            .run("git", &["commit", "-am", message])
++            .map_err(|e| format!("Failed to commit changes: {}", e))?;
++
++        if result.success {
++            Ok(())
++        } else {
++            Err(format!(
++                "Error committing changes: {}",
++                String::from_utf8_lossy(&result.stderr)
++            ))
++        }
++    }
++
+     #[cfg(test)]
+     pub fn delete_current_branch(&mut self) -> Result<(), String> {
+         let current_branch = self.get_current_branch_name()?;
+@@ -114,6 +162,18 @@ mod tests {
+         assert_eq!(result, "feature/test");
+     }
+ 
++    #[test]
++    fn should_return_diff() {
++        let mut git = Git::with_mock(RunResult {
++            success: true,
++            stdout: b"diff --git a/file.txt b/file.txt\n".to_vec(),
++            stderr: vec![],
++        });
++
++        let result = git.get_diff().unwrap();
++        assert_eq!(result, "diff --git a/file.txt b/file.txt");
++    }
++
+     #[test]
+     fn test_with_real_runner() {
+         let result = Git::real().get_current_branch_name();
+diff --git a/src/main.rs b/src/main.rs
+index d807364..2b33a02 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,22 +1,14 @@
+ mod cli;
+ mod command_runner;
++mod file;
+ mod git;
+-// mod start;
++mod prompt;
+ 
+ use clap::Parser;
+-// use clap::Parser;
+-// use cli_struct::{Actions, Cli};
+ use cli::{Actions, Cli};
+ use git::Git;
+-// use start::run_start;
+ 
+ fn main() {
+-    println!("This is a placeholder for the main function.");
+-    match Git::real().get_current_branch_name() {
+-        Ok(branch) => println!("Current branch: {}", branch),
+-        Err(e) => eprintln!("Error: {}", e),
+-    }
+-
+     let cli = Cli::parse();
+     match cli.action {
+         Actions::Start {
+@@ -25,9 +17,44 @@ fn main() {
+             remove_prefix,
+             no_push,
+         } => {
+-            Git::real().create_branch(branch.as_deref());
++            println!(
++                "Starting a new branch with options: skip_hooks={}, remove_prefix={}, no_push={}",
++                skip_hooks, remove_prefix, no_push
++            );
++            let _ = Git::real().create_branch(branch.as_deref());
+         }
+-        Actions::Save { context } => {
++        Actions::Save { context, scope } => {
++            println!("executing save");
++            let diff = Git::real().get_diff().unwrap_or_else(|e| {
++                eprintln!("Error getting diff: {}", e);
++                String::new()
++            });
++
++            match file::write_file("temp_git_changes.diff", &diff) {
++                Ok(_) => {
++                    Git::real()
++                        .add_all()
++                        .unwrap_or_else(|e| eprintln!("Error adding file to git: {}", e));
++
++                    println!("created diff file");
++                    let message = prompt::generate_commit_message(
++                        context.as_deref().unwrap_or(""),
++                        scope.as_deref().unwrap_or(""),
++                    )
++                    .unwrap_or_else(|e| {
++                        eprintln!("Error generating commit message: {}", e);
++                        String::new()
++                    });
++
++                    Git::real()
++                        .commit_changes(&message)
++                        .unwrap_or_else(|e| eprintln!("Error committing changes: {}", e));
++
++                    let _ = file::rm_file("temp_git_changes.diff");
++                }
++                Err(e) => println!("Error writing file: {}", e),
++            }
++
+             println!("Saving with context: {:?}", context);
+         }
+     }
