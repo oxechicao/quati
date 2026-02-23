@@ -1,6 +1,43 @@
 use clap::{Parser, Subcommand};
+use git2::{DiffOptions, Repository};
 
-use crate::{file, git::Git, logger::Logger, prompt};
+use crate::{
+    git::{do_commit, git_add_all, git_diff_as_string},
+    logger::Logger,
+    prompt,
+};
+
+pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String> {
+    Logger.info("executing save");
+    let repo = Repository::open("./").unwrap_or_else(|e| {
+        eprintln!("Error opening repository: {}", e);
+        std::process::exit(1);
+    });
+
+    let _ = git_add_all(&repo);
+
+    let mut opts = DiffOptions::new();
+    let repo_diff = repo
+        .diff_index_to_workdir(None, Some(&mut opts))
+        .map_err(|e| format!("Failed to add files: {}", e))?;
+
+    let diff =
+        git_diff_as_string(&repo_diff).map_err(|e| format!("Error generating diff: {}", e))?;
+
+    let message = prompt::generate_commit_message(
+        context.as_deref().unwrap_or(""),
+        scope.as_deref().unwrap_or(""),
+        &diff,
+    )
+    .unwrap_or_else(|e| {
+        eprintln!("Error generating commit message: {}", e);
+        String::new()
+    });
+
+    let _ = do_commit(&repo, &message);
+
+    Ok(())
+}
 
 /// CLI to manage git changes with AI assistance
 #[derive(Parser)]
@@ -43,38 +80,6 @@ pub enum Actions {
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
     },
-}
-
-pub fn save(context: Option<String>, scope: Option<String>) {
-    Logger.info("executing save");
-    Git::real()
-        .add_all()
-        .unwrap_or_else(|e| Logger.error(&format!("Error adding file to git: {}", e)));
-    let diff = Git::real().get_diff().unwrap_or_else(|e| {
-        Logger.error(&format!("Error getting diff: {}", e));
-        String::new()
-    });
-
-    match file::write_file("temp_git_changes.diff", &diff) {
-        Ok(_) => {
-            Logger.info("created diff file");
-            let message = prompt::generate_commit_message(
-                context.as_deref().unwrap_or(""),
-                scope.as_deref().unwrap_or(""),
-            )
-            .unwrap_or_else(|e| {
-                eprintln!("Error generating commit message: {}", e);
-                String::new()
-            });
-
-            Git::real()
-                .commit_changes(&message)
-                .unwrap_or_else(|e| Logger.error(&format!("Error committing changes: {}", e)));
-
-            let _ = file::rm_file("temp_git_changes.diff");
-        }
-        Err(e) => Logger.error(&format!("Errmr writing file: {}", e)),
-    }
 }
 
 #[cfg(test)]

@@ -1,6 +1,5 @@
 mod cli;
 mod command_runner;
-mod file;
 mod git;
 mod logger;
 mod prompt;
@@ -24,6 +23,8 @@ fn main() {
             );
             let _ = Git::real().create_branch(branch.as_deref());
         }
-        Actions::Save { context, scope } => save(context, scope),
+        Actions::Save { context, scope } => {
+            let _ = save(context, scope);
+        }
     }
 }

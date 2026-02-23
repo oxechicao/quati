@@ -7,4 +7,5 @@ edition = "2024"
 assert_cmd = "2.1.1"
 clap = { version = "4.5.53", features = ["derive"] }
 colored = "3.1.1"
+git2 = { version = "0.20.4", features = ["https", "ssh"] }
 predicates = "3.1.3"

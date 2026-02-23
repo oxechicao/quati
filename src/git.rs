@@ -1,6 +1,73 @@
+use git2::{Diff, DiffFormat, Error, IndexAddOption, Oid, Repository};
+use std::error::Error as StdError;
+
 use crate::command_runner::{CommandRunner, RealCommandRunner};
 #[cfg(test)]
 use crate::command_runner::{MockCommandRunner, RunResult};
+
+pub fn git_add_all(repo: &Repository) -> Result<(), Box<dyn StdError>> {
+    let mut index = repo.index()?;
+    index.add_all(["."].iter(), IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+
+    Ok(())
+}
+
+pub fn git_diff_as_string(diff: &Diff) -> Result<String, Error> {
+    let mut buf = String::new();
+
+    // The print method iterates over the diff and calls the closure for each line.
+    diff.print(DiffFormat::Patch, |_delta, _hunk, line| {
+        // Line origin is a single character indicating the type of line ('+', '-', ' ', etc.)
+        let origin = line.origin();
+        if origin != '>' && origin != '<' && origin != 'F' && origin != 'H' {
+            // Append the origin character
+            buf.push(origin);
+        }
+
+        // Convert the content to a string slice and append it
+        let content = str::from_utf8(line.content()).unwrap_or_default();
+        buf.push_str(content);
+
+        // Return true to continue the iteration
+        true
+    })?;
+
+    Ok(buf)
+}
+
+pub fn do_commit(repo: &Repository, message: &str) -> Result<Oid, git2::Error> {
+    // 1. Preparar o Index (git add .)
+    let mut index = repo.index()?;
+    index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
+    index.write()?;
+
+    // 2. Gravar a Tree (snapshot do estado atual)
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+
+    // 3. Definir o Autor e Committer
+    let signature = repo.signature()?; // Usa configs globais do git
+
+    // 4. Obter o Commit Pai (se existir)
+    let mut parents = Vec::new();
+    if let Ok(head) = repo.head() {
+        parents.push(head.peel_to_commit()?);
+    }
+
+    // 5. Criar o Commit
+    let parents_refs: Vec<&git2::Commit> = parents.iter().collect();
+    let commit_oid = repo.commit(
+        Some("HEAD"),  // Atualiza o HEAD para este novo commit
+        &signature,    // Autor
+        &signature,    // Committer
+        message,       // Mensagem
+        &tree,         // Árvore de arquivos
+        &parents_refs, // Lista de pais
+    )?;
+
+    Ok(commit_oid)
+}
 
 pub struct Git<R: CommandRunner> {
     runner: R,
