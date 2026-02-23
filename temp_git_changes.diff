@@ -1,0 +1,175 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 2094451..c499c3e 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -139,6 +139,15 @@ version = "1.0.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
+ 
++[[package]]
++name = "colored"
++version = "3.1.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
++dependencies = [
++ "windows-sys",
++]
++
+ [[package]]
+ name = "difflib"
+ version = "0.4.0"
+@@ -244,6 +253,7 @@ version = "0.1.0"
+ dependencies = [
+  "assert_cmd",
+  "clap",
++ "colored",
+  "predicates",
+ ]
+ 
+diff --git a/Cargo.toml b/Cargo.toml
+index 9e90fba..b0300ee 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -6,4 +6,5 @@ edition = "2024"
+ [dependencies]
+ assert_cmd = "2.1.1"
+ clap = { version = "4.5.53", features = ["derive"] }
++colored = "3.1.1"
+ predicates = "3.1.3"
+diff --git a/src/cli.rs b/src/cli.rs
+index 7f1b115..307c333 100644
+--- a/src/cli.rs
++++ b/src/cli.rs
+@@ -1,5 +1,7 @@
+ use clap::{Parser, Subcommand};
+ 
++use crate::{file, git::Git, logger::Logger, prompt};
++
+ /// CLI to manage git changes with AI assistance
+ #[derive(Parser)]
+ #[command(version, about, long_about = None)]
+@@ -43,6 +45,39 @@ pub enum Actions {
+     },
+ }
+ 
++pub fn save(context: Option<String>, scope: Option<String>) {
++    Logger.info("executing save");
++    let diff = Git::real().get_diff().unwrap_or_else(|e| {
++        Logger.error(&format!("Error getting diff: {}", e));
++        String::new()
++    });
++
++    match file::write_file("temp_git_changes.diff", &diff) {
++        Ok(_) => {
++            Git::real()
++                .add_all()
++                .unwrap_or_else(|e| Logger.error(&format!("Error adding file to git: {}", e)));
++
++            Logger.info("created diff file");
++            let message = prompt::generate_commit_message(
++                context.as_deref().unwrap_or(""),
++                scope.as_deref().unwrap_or(""),
++            )
++            .unwrap_or_else(|e| {
++                eprintln!("Error generating commit message: {}", e);
++                String::new()
++            });
++
++            Git::real()
++                .commit_changes(&message)
++                .unwrap_or_else(|e| Logger.error(&format!("Error committing changes: {}", e)));
++
++            let _ = file::rm_file("temp_git_changes.diff");
++        }
++        Err(e) => Logger.error(&format!("Errmr writing file: {}", e)),
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use clap::CommandFactory;
+diff --git a/src/main.rs b/src/main.rs
+index 2b33a02..4da5f28 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -2,10 +2,11 @@ mod cli;
+ mod command_runner;
+ mod file;
+ mod git;
++mod logger;
+ mod prompt;
+ 
+ use clap::Parser;
+-use cli::{Actions, Cli};
++use cli::{Actions, Cli, save};
+ use git::Git;
+ 
+ fn main() {
+@@ -23,39 +24,6 @@ fn main() {
+             );
+             let _ = Git::real().create_branch(branch.as_deref());
+         }
+-        Actions::Save { context, scope } => {
+-            println!("executing save");
+-            let diff = Git::real().get_diff().unwrap_or_else(|e| {
+-                eprintln!("Error getting diff: {}", e);
+-                String::new()
+-            });
+-
+-            match file::write_file("temp_git_changes.diff", &diff) {
+-                Ok(_) => {
+-                    Git::real()
+-                        .add_all()
+-                        .unwrap_or_else(|e| eprintln!("Error adding file to git: {}", e));
+-
+-                    println!("created diff file");
+-                    let message = prompt::generate_commit_message(
+-                        context.as_deref().unwrap_or(""),
+-                        scope.as_deref().unwrap_or(""),
+-                    )
+-                    .unwrap_or_else(|e| {
+-                        eprintln!("Error generating commit message: {}", e);
+-                        String::new()
+-                    });
+-
+-                    Git::real()
+-                        .commit_changes(&message)
+-                        .unwrap_or_else(|e| eprintln!("Error committing changes: {}", e));
+-
+-                    let _ = file::rm_file("temp_git_changes.diff");
+-                }
+-                Err(e) => println!("Error writing file: {}", e),
+-            }
+-
+-            println!("Saving with context: {:?}", context);
+-        }
++        Actions::Save { context, scope } => save(context, scope),
+     }
+ }
+diff --git a/src/prompt.rs b/src/prompt.rs
+index 70c2ab7..bf4b438 100644
+--- a/src/prompt.rs
++++ b/src/prompt.rs
+@@ -1,4 +1,7 @@
+-use crate::command_runner::{CommandRunner, RealCommandRunner};
++use crate::{
++    command_runner::{CommandRunner, RealCommandRunner},
++    logger::Logger,
++};
+ 
+ const DEFAULT_PROMPT: &str = "Read the file @temp_git_changes.diff to understand the code changes.
+ Read the file <CONTEXT_FILE> to get more context about the feature.
+@@ -42,11 +45,11 @@ pub fn generate_commit_message(context: &str, scope: &str) -> Result<String, Str
+ 
+     if response.success {
+         let result = String::from_utf8_lossy(&response.stdout).to_string();
+-        println!("Generated commit message:\n{}", result);
++        Logger.info(&format!("Generated commit message:\n{}", result));
+         return Ok(result);
+     }
+ 
+     let err = String::from_utf8_lossy(&response.stderr).to_string();
+-    eprintln!("Error generating commit message: {}", err);
++    Logger.warn(&format!("Error generating commit message: {}", err));
+     Ok(String::new())
+ }

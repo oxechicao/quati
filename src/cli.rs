@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 
+use crate::{file, git::Git, logger::Logger, prompt};
+
 /// CLI to manage git changes with AI assistance
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -41,6 +43,39 @@ pub enum Actions {
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
     },
+}
+
+pub fn save(context: Option<String>, scope: Option<String>) {
+    Logger.info("executing save");
+    let diff = Git::real().get_diff().unwrap_or_else(|e| {
+        Logger.error(&format!("Error getting diff: {}", e));
+        String::new()
+    });
+
+    match file::write_file("temp_git_changes.diff", &diff) {
+        Ok(_) => {
+            Git::real()
+                .add_all()
+                .unwrap_or_else(|e| Logger.error(&format!("Error adding file to git: {}", e)));
+
+            Logger.info("created diff file");
+            let message = prompt::generate_commit_message(
+                context.as_deref().unwrap_or(""),
+                scope.as_deref().unwrap_or(""),
+            )
+            .unwrap_or_else(|e| {
+                eprintln!("Error generating commit message: {}", e);
+                String::new()
+            });
+
+            Git::real()
+                .commit_changes(&message)
+                .unwrap_or_else(|e| Logger.error(&format!("Error committing changes: {}", e)));
+
+            let _ = file::rm_file("temp_git_changes.diff");
+        }
+        Err(e) => Logger.error(&format!("Errmr writing file: {}", e)),
+    }
 }
 
 #[cfg(test)]

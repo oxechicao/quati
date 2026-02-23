@@ -1,4 +1,7 @@
-use crate::command_runner::{CommandRunner, RealCommandRunner};
+use crate::{
+    command_runner::{CommandRunner, RealCommandRunner},
+    logger::Logger,
+};
 
 const DEFAULT_PROMPT: &str = "Read the file @temp_git_changes.diff to understand the code changes.
 Read the file <CONTEXT_FILE> to get more context about the feature.
@@ -42,11 +45,11 @@ pub fn generate_commit_message(context: &str, scope: &str) -> Result<String, Str
 
     if response.success {
         let result = String::from_utf8_lossy(&response.stdout).to_string();
-        println!("Generated commit message:\n{}", result);
+        Logger.info(&format!("Generated commit message:\n{}", result));
         return Ok(result);
     }
 
     let err = String::from_utf8_lossy(&response.stderr).to_string();
-    eprintln!("Error generating commit message: {}", err);
+    Logger.warn(&format!("Error generating commit message: {}", err));
     Ok(String::new())
 }
