@@ -47,6 +47,9 @@ pub enum Actions {
 
 pub fn save(context: Option<String>, scope: Option<String>) {
     Logger.info("executing save");
+    Git::real()
+        .add_all()
+        .unwrap_or_else(|e| Logger.error(&format!("Error adding file to git: {}", e)));
     let diff = Git::real().get_diff().unwrap_or_else(|e| {
         Logger.error(&format!("Error getting diff: {}", e));
         String::new()
@@ -54,10 +57,6 @@ pub fn save(context: Option<String>, scope: Option<String>) {
 
     match file::write_file("temp_git_changes.diff", &diff) {
         Ok(_) => {
-            Git::real()
-                .add_all()
-                .unwrap_or_else(|e| Logger.error(&format!("Error adding file to git: {}", e)));
-
             Logger.info("created diff file");
             let message = prompt::generate_commit_message(
                 context.as_deref().unwrap_or(""),
