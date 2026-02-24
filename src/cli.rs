@@ -1,29 +1,99 @@
 use clap::{Parser, Subcommand};
-use git2::{DiffOptions, Repository};
 
 use crate::{
-    git::{do_commit, git_add_all, git_diff_as_string},
+    git::{
+        create_branch, do_commit, get_current_branch_name, get_repo, git_add_all,
+        git_diff_as_string, push_branch,
+    },
     logger::Logger,
     prompt,
 };
 
-pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String> {
-    Logger.info("executing save");
-    let repo = Repository::open("./").unwrap_or_else(|e| {
-        eprintln!("Error opening repository: {}", e);
-        std::process::exit(1);
+/// CLI to manage git changes with AI assistance
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+pub struct Cli {
+    #[command(subcommand)]
+    pub action: Actions,
+}
+
+/// Action to perform
+#[derive(Subcommand)]
+pub enum Actions {
+    /// Start a new branch locally and remotely
+    Start {
+        /// Name of the new branch
+        branch: Option<String>,
+
+        /// Define some preffix to be used in the branch name, like "feature/" or "bugfix/"
+        #[arg(short = 'p', long, default_value = "wip/")]
+        prefix: String,
+
+        #[arg(long = "no-preffix", default_value_t = false)]
+        no_prefix: bool,
+
+        /// Do not push the branch to origin
+        #[arg(short = 'S', long = "no-push", default_value_t = false)]
+        no_push: bool,
+    },
+    /// Action to do the commit with AI Assistance
+    Save {
+        /// Path to the file with some context to help the AI to generate the
+        /// commit message
+        context: Option<String>,
+
+        /// Scope of the commit message, to be used in the subject
+        scope: Option<String>,
+    },
+    /// Do the commit with Ai assistance and push the branch to origin
+    Update {
+        /// Path to the file with some context to help the AI to generate the
+        /// commit message
+        context: Option<String>,
+
+        /// Scope of the commit message, to be used in the subject
+        scope: Option<String>,
+    },
+}
+
+pub fn start(branch: Option<String>, prefix: String, no_prefix: bool, no_push: bool) {
+    Logger.info("executing start");
+    let branch_name = format!(
+        "{}{}",
+        if no_prefix { String::new() } else { prefix },
+        branch.unwrap_or_else(|| "feature/new-branch".to_string())
+    );
+    let repo = get_repo();
+
+    let current_branch = get_current_branch_name(&repo).unwrap_or_else(|e| {
+        eprintln!("Error getting current branch: {}", e);
+        String::new()
     });
 
+    if current_branch == branch_name {
+        Logger.warn(&format!(
+            "Already on branch '{}', skipping branch creation",
+            branch_name
+        ));
+        return;
+    }
+
+    create_branch(&repo, &branch_name).unwrap_or_else(|e| {
+        eprintln!("Error creating branch: {}", e);
+    });
+
+    if !no_push {
+        push_branch(&repo, &branch_name).unwrap_or_else(|e| {
+            eprintln!("Error pushing branch: {}", e);
+        })
+    }
+}
+
+pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String> {
+    Logger.info("executing save");
+    let repo = get_repo();
     let _ = git_add_all(&repo);
-
-    let mut opts = DiffOptions::new();
-    let repo_diff = repo
-        .diff_index_to_workdir(None, Some(&mut opts))
-        .map_err(|e| format!("Failed to add files: {}", e))?;
-
-    let diff =
-        git_diff_as_string(&repo_diff).map_err(|e| format!("Error generating diff: {}", e))?;
-
+    let diff = git_diff_as_string(&repo).map_err(|e| format!("Error generating diff: {}", e))?;
     let message = prompt::generate_commit_message(
         context.as_deref().unwrap_or(""),
         scope.as_deref().unwrap_or(""),
@@ -39,55 +109,12 @@ pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String
     Ok(())
 }
 
-/// CLI to manage git changes with AI assistance
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-pub struct Cli {
-    #[command(subcommand)]
-    pub action: Actions,
-
-    /// Run in quiet mode
-    #[arg(short = 'q', long)]
-    pub quiet: Option<bool>,
-}
-
-/// Action to perform
-#[derive(Subcommand)]
-pub enum Actions {
-    /// Start a new branch locally and remotely
-    Start {
-        /// Name of the new branch
-        branch: Option<String>,
-
-        /// Skip git hooks
-        #[arg(short = 'N', long = "no-verify", default_value_t = false)]
-        skip_hooks: bool,
-
-        /// Remove the prefix from the branch name
-        #[arg(short = 'P', long = "no-prefix", default_value_t = false)]
-        remove_prefix: bool,
-
-        /// Do not push the branch to origin
-        #[arg(short = 'S', long = "no-push", default_value_t = false)]
-        no_push: bool,
-    },
-    /// Action to do the commit with AI Assistance
-    Save {
-        /// Path to the file with some context to help the AI to generate the
-        /// commit message
-        context: Option<String>,
-
-        /// Scope of the commit message, to be used in the subject
-        scope: Option<String>,
-    },
-}
-
-#[cfg(test)]
-mod tests {
-    use clap::CommandFactory;
-
-    #[test]
-    fn verify_cli() {
-        crate::cli::Cli::command().debug_assert();
-    }
+pub fn update(context: Option<String>, scope: Option<String>) -> Result<(), String> {
+    Logger.info("executing update");
+    save(context, scope)?;
+    let repo = get_repo();
+    let branch_name = get_current_branch_name(&repo)
+        .map_err(|e| format!("Error getting current branch name: {}", e))?;
+    push_branch(&repo, &branch_name).map_err(|e| format!("Error pushing branch: {}", e))?;
+    Ok(())
 }

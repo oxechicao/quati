@@ -5,26 +5,24 @@ mod logger;
 mod prompt;
 
 use clap::Parser;
-use cli::{Actions, Cli, save};
-use git::Git;
+use cli::{Actions, Cli, save, start, update};
 
 fn main() {
     let cli = Cli::parse();
     match cli.action {
         Actions::Start {
             branch,
-            skip_hooks,
-            remove_prefix,
+            prefix,
+            no_prefix,
             no_push,
         } => {
-            println!(
-                "Starting a new branch with options: skip_hooks={}, remove_prefix={}, no_push={}",
-                skip_hooks, remove_prefix, no_push
-            );
-            let _ = Git::real().create_branch(branch.as_deref());
+            start(branch, prefix, no_prefix, no_push);
         }
         Actions::Save { context, scope } => {
             let _ = save(context, scope);
+        }
+        Actions::Update { context, scope } => {
+            let _ = update(context, scope);
         }
     }
 }
