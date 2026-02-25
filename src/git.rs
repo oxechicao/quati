@@ -4,7 +4,7 @@ use git2::{
 };
 use std::{error::Error as StdError, path::Path};
 
-use crate::logger::Logger;
+use crate::{environments::get_ssh_key_path, logger::Logger};
 
 pub fn get_repo(path: Option<&Path>) -> Repository {
     let target = path.unwrap_or_else(|| Path::new("./"));
@@ -100,10 +100,15 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
     let mut remote = repo.find_remote("origin")?;
 
     let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(|_url, username_from_url, _allowed_types| {
-        Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+    callbacks.credentials(move |_url, user, _types| {
+        let username = user.unwrap_or("git");
+        let key_path = get_ssh_key_path();
+        Cred::ssh_key(
+            username, None,      // Public key (git2 can usually derive it)
+            &key_path, // Private key from .env or default
+            None,      // Passphrase
+        )
     });
-
     let mut options = PushOptions::new();
     options.remote_callbacks(callbacks);
 
