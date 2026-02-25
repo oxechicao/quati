@@ -9,4 +9,7 @@ impl Logger {
     pub fn warn(&self, msg: &str) {
         println!("{} {}", "[Warning]: ".yellow(), msg);
     }
+    pub fn error(&self, msg: &str) {
+        println!("{} {}", "[ERROR]: ".red(), msg);
+    }
 }

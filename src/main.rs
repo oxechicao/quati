@@ -1,14 +1,9 @@
-mod cli;
-mod command_runner;
-mod git;
-mod logger;
-mod prompt;
-
 use clap::Parser;
-use cli::{Actions, Cli, save, start, update};
+use quati::cli::{Actions, Cli, save, start, update};
 
 fn main() {
     let cli = Cli::parse();
+
     match cli.action {
         Actions::Start {
             branch,
@@ -16,13 +11,13 @@ fn main() {
             no_prefix,
             no_push,
         } => {
-            start(branch, prefix, no_prefix, no_push);
+            start(branch, prefix, no_prefix, no_push, None);
         }
         Actions::Save { context, scope } => {
-            let _ = save(context, scope);
+            let _ = save(context, scope, None);
         }
         Actions::Update { context, scope } => {
-            let _ = update(context, scope);
+            let _ = update(context, scope, None);
         }
     }
 }

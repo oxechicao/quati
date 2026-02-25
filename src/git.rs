@@ -1,8 +1,14 @@
-use git2::{Diff, DiffFormat, DiffOptions, Error, IndexAddOption, Oid, Repository};
-use std::error::Error as StdError;
+use git2::{
+    Cred, Diff, DiffFormat, DiffOptions, Error, IndexAddOption, Oid, PushOptions, RemoteCallbacks,
+    Repository,
+};
+use std::{error::Error as StdError, path::Path};
 
-pub fn get_repo() -> Repository {
-    Repository::open("./").unwrap_or_else(|e| {
+use crate::logger::Logger;
+
+pub fn get_repo(path: Option<&Path>) -> Repository {
+    let target = path.unwrap_or_else(|| Path::new("./"));
+    Repository::open(target).unwrap_or_else(|e| {
         eprintln!("Error opening repository: {}", e);
         std::process::exit(1);
     })
@@ -87,14 +93,23 @@ pub fn create_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::E
 }
 
 pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Error> {
+    Logger.info(&format!(
+        "Pushing branch '{}' to remote 'origin'",
+        branch_name
+    ));
     let mut remote = repo.find_remote("origin")?;
-    remote.push(
-        &[&format!(
-            "refs/heads/{}:refs/heads/{}",
-            branch_name, branch_name
-        )],
-        None,
-    )?;
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|_url, username_from_url, _allowed_types| {
+        Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+    });
+
+    let mut options = PushOptions::new();
+    options.remote_callbacks(callbacks);
+
+    let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
+
+    remote.push(&[&refspec], Some(&mut options))?;
     Ok(())
 }
 

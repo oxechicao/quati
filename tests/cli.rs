@@ -1,16 +1,17 @@
-// use std::{env, io::Result, process::Command};
-//
-// use git2::Repository;
-//
-// #[test]
-// fn test_start() {
-//     let temp_dir = tempfile::tempdir().unwrap();
-//     let repo = Repository::init(temp_dir.path()).unwrap();
-//     let a = Command::new("pwd")
-//         .output()
-//         .expect("Failed to initialize git repository");
-//     let path = env::current_dir()?;
-//     println!("The current directory is {}", path.display());
-//     let stdout = str::from_utf8(&a.stdout).unwrap();
-//     print!("The current directory is: {}", stdout);
-// }
+use git2::Repository;
+use tempfile::tempdir;
+
+use quati::cli::save;
+
+#[test]
+fn test_save() {
+    let temp_dir = tempdir().expect("Failed to create temp directory");
+    let path = temp_dir.path();
+    Repository::init(path).expect("Failed to initialize git repository");
+    let result = save(Some("feat".into()), Some("auth".into()), Some(path));
+    assert!(
+        result.is_ok(),
+        "Expected save to succeed, got error: {:?}",
+        result.err()
+    );
+}

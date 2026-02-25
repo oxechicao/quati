@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -56,14 +58,20 @@ pub enum Actions {
     },
 }
 
-pub fn start(branch: Option<String>, prefix: String, no_prefix: bool, no_push: bool) {
+pub fn start(
+    branch: Option<String>,
+    prefix: String,
+    no_prefix: bool,
+    no_push: bool,
+    path: Option<&Path>,
+) {
     Logger.info("executing start");
     let branch_name = format!(
         "{}{}",
         if no_prefix { String::new() } else { prefix },
         branch.unwrap_or_else(|| "feature/new-branch".to_string())
     );
-    let repo = get_repo();
+    let repo = get_repo(path);
 
     let current_branch = get_current_branch_name(&repo).unwrap_or_else(|e| {
         eprintln!("Error getting current branch: {}", e);
@@ -89,9 +97,13 @@ pub fn start(branch: Option<String>, prefix: String, no_prefix: bool, no_push: b
     }
 }
 
-pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String> {
+pub fn save(
+    context: Option<String>,
+    scope: Option<String>,
+    path: Option<&Path>,
+) -> Result<(), String> {
     Logger.info("executing save");
-    let repo = get_repo();
+    let repo = get_repo(path);
     let _ = git_add_all(&repo);
     let diff = git_diff_as_string(&repo).map_err(|e| format!("Error generating diff: {}", e))?;
     let message = prompt::generate_commit_message(
@@ -109,12 +121,22 @@ pub fn save(context: Option<String>, scope: Option<String>) -> Result<(), String
     Ok(())
 }
 
-pub fn update(context: Option<String>, scope: Option<String>) -> Result<(), String> {
+pub fn update(
+    context: Option<String>,
+    scope: Option<String>,
+    path: Option<&Path>,
+) -> Result<(), String> {
     Logger.info("executing update");
-    save(context, scope)?;
-    let repo = get_repo();
+    save(context, scope, path)?;
+    let repo = get_repo(path);
     let branch_name = get_current_branch_name(&repo)
         .map_err(|e| format!("Error getting current branch name: {}", e))?;
-    push_branch(&repo, &branch_name).map_err(|e| format!("Error pushing branch: {}", e))?;
+    let result = push_branch(&repo, &branch_name);
+
+    match result {
+        Ok(_) => Logger.info(&format!("Branch '{}' pushed successfully", branch_name)),
+        Err(e) => Logger.error(format!("Error pushing branch: {}", e).as_str()),
+    }
+
     Ok(())
 }
