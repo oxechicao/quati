@@ -98,7 +98,13 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
         branch_name
     ));
     let mut remote = repo.find_remote("origin")?;
+    let url = remote.url().unwrap_or("");
 
+    // If the URL uses the alias, we manually point it to the right place
+    if url.contains("git@ftgit:") {
+        let real_url = url.replace("git@ftgit:", "git@github.com:"); // Use your real HostName here
+        remote = repo.remote_anonymous(&real_url)?;
+    }
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(move |_url, user, _types| {
         let username = user.unwrap_or("git");
