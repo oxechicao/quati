@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use clap::{Parser, Subcommand};
+use git2::Error;
 
 use crate::{
     git::{
@@ -29,7 +30,7 @@ pub enum Actions {
 
         /// Define some preffix to be used in the branch name, like "feature/" or "bugfix/"
         #[arg(short = 'p', long, default_value = "wip/")]
-        prefix: String,
+        prefix: Option<String>,
 
         #[arg(long = "no-preffix", default_value_t = false)]
         no_prefix: bool,
@@ -60,17 +61,24 @@ pub enum Actions {
 
 pub fn start(
     branch: Option<String>,
-    prefix: String,
+    prefix: Option<String>,
     no_prefix: bool,
     no_push: bool,
     path: Option<&Path>,
-) {
+) -> Result<(), Error> {
     Logger.info("executing start");
+    let prefix_branc = if no_prefix {
+        String::new()
+    } else {
+        prefix.unwrap()
+    };
+
     let branch_name = format!(
         "{}{}",
-        if no_prefix { String::new() } else { prefix },
-        branch.unwrap_or_else(|| "feature/new-branch".to_string())
+        prefix_branc,
+        branch.unwrap_or_else(|| "feature/new-branch".to_string()),
     );
+
     let repo = get_repo(path);
 
     let current_branch = get_current_branch_name(&repo).unwrap_or_else(|e| {
@@ -83,18 +91,18 @@ pub fn start(
             "Already on branch '{}', skipping branch creation",
             branch_name
         ));
-        return;
+        return Ok(());
     }
 
-    create_branch(&repo, &branch_name).unwrap_or_else(|e| {
-        eprintln!("Error creating branch: {}", e);
-    });
+    create_branch(&repo, &branch_name)?;
 
-    if !no_push {
-        push_branch(&repo, &branch_name).unwrap_or_else(|e| {
-            eprintln!("Error pushing branch: {}", e);
-        })
+    if no_push {
+        return Ok(());
     }
+
+    push_branch(&repo, &branch_name)?;
+
+    Ok(())
 }
 
 pub fn save(
