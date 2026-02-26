@@ -1,27 +1,35 @@
-# Quati command-line
+# Project Overview
 
-Versioning on this project mean:
+## Versioning Guide
 
-| Major                   | Minor            | Patch                  |
-| ----------------------- | ---------------- | ---------------------- |
-| Break change or release | Finish an "EPIC" | Merge a task/story/fix |
+Versioning for this project follows these criteria:
 
-This is a commandline line tool that help you to work with AI libraries to support
-development.
+| Major                              | Minor                     | Patch                         |
+| ---------------------------------- | ------------------------- | ----------------------------- |
+| Breaking changes or major releases | Completion of an **EPIC** | Merging a task, story, or fix |
 
-It is build in rust.
+---
 
-> Note: The agent setup (e.g copilot, codex) need be done before run the cli. It means,
-> that you need to open, do login, setup etc. Or write a custom agent_command that setup
-> it.
+## About the Tool
 
-You do not need this cli to do anything here. You can just write some shellscript
-functions. You can check in quati.sh to see the shellscript functions that do basically
-the same. Or just ask to your AI agent to write a commit message for you, or create a
-branch, etc.
+This is a command-line interface (CLI) tool built in **Rust** designed to help you work
+with AI libraries to support your development workflow.
 
-> It is a simple cli used to be a use case to study rust and how to create a cli in rust.
-> It can be not perfect, but it feat my daily usage.
+> **Note:** AI agent setup (e.g., GitHub Copilot, OpenAI Codex) must be completed before
+> running the CLI. This means you need to open the agent, log in, and complete the initial
+> configuration. Alternatively, you can write a custom `agent_command` to handle the setup
+> automatically.
+
+## Project Philosophy
+
+You don’t strictly need this CLI to perform these tasks. You could achieve similar results
+with shell script functions; for example, you can check `quati.sh` to see scripts that
+perform basically the same actions. You could also simply ask your AI agent to write a
+commit message or create a branch for you.
+
+This tool was created as a use case to study **Rust** and explore how to build CLI
+applications. While it may not be perfect, it **fits** my daily usage and helps streamline
+my workflow.
 
 ## How to use it?
 
@@ -33,19 +41,22 @@ quati -h
 quati <action> <options>
 ```
 
-There are few basic commands:
+### Basic commands
 
-| Action   | Description                                                                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start`  | Create a new branch with the name `wip/{branch_name}` and switch to it. The branch name is optional, if not provided will be created with the name |
-| `save`   | Do only commit locally with AI assistance                                                                                                          |
-| `update` | Do commit with AI assistance and push to origin                                                                                                    |
+| Command  | Description                                                                                                          |
+| :------- | :------------------------------------------------------------------------------------------------------------------- |
+| `start`  | Creates and switches to a new branch named `wip/{branch_name}`. If no name is provided, a default name is generated. |
+| `save`   | Performs a local commit using AI-assisted message generation.                                                        |
+| `update` | Performs an AI-assisted commit and automatically pushes the changes to the origin.                                   |
 
 ## How it works?
 
-It is simple, when you run `quati save` it will stage all the changes, get the diff, run
-the prompt with the diff asking for the message, return the message and do commit with the
-message.
+The workflow is straightforward. When you run `quati save`, the tool automatically:
+
+1. **Stages** all current changes (`git add .`).
+2. **Captures** the `git diff` of your changes.
+3. **Processes** the diff through an AI prompt to generate a descriptive commit message.
+4. **Commits** the changes using the AI-generated message.
 
 ```text
 +------+     +-------+     +----+
