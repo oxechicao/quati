@@ -64,8 +64,8 @@ quati <action> <options>
 #### Custom git host and ssh key
 
 ```env
-QUATI_SSH_KEY_PATH=/path/to/my/ssh/key
 # Example: QUATI_SSH_KEY_PATH=/Users/username/.ssh/custom_id_rsa
+QUATI_SSH_KEY_PATH=/path/to/my/ssh/key
 QUATI_CUSTOM_LOCAL_GIT_HOST=my.custom.git.host
 QUATI_CUSTOM_REMOTE_GIT_HOST=my.custom.git.host
 ```
