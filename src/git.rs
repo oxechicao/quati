@@ -94,6 +94,7 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
         "Pushing branch '{}' to remote 'origin'",
         branch_name
     ));
+
     let mut remote = repo.find_remote("origin")?;
     let url = remote.url().unwrap_or("");
 
@@ -101,23 +102,23 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
         eprintln!("Error getting local git host: {}", e);
         std::process::exit(1);
     });
-    let remote_host = get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com".to_string());
 
+    let remote_host = get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com".to_string());
     if url.contains(&local_host) {
         let real_url = url.replace(&local_host, &remote_host);
-        remote = repo.remote_anonymous(&real_url)?;
+        remote = repo.remote_anonymous(&format!("{}:", real_url))?;
     }
+
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(move |_url, user, _types| {
         let username = user.unwrap_or("git");
         let key_path = get_ssh_key_path();
         Cred::ssh_key(username, None, &key_path, None)
     });
+
     let mut options = PushOptions::new();
     options.remote_callbacks(callbacks);
-
     let refspec = format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name);
-
     remote.push(&[&refspec], Some(&mut options))?;
     Ok(())
 }
@@ -127,5 +128,6 @@ pub fn get_current_branch_name(repo: &Repository) -> Result<String, git2::Error>
     let branch_name = head
         .shorthand()
         .ok_or_else(|| git2::Error::from_str("Failed to get branch name from HEAD"))?;
+
     Ok(branch_name.to_string())
 }
