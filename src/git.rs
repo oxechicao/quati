@@ -103,10 +103,11 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
         std::process::exit(1);
     });
 
-    let remote_host = get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com".to_string());
+    let remote_host =
+        get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com:".to_string());
     if url.contains(&local_host) {
         let real_url = url.replace(&local_host, &remote_host);
-        remote = repo.remote_anonymous(&format!("{}:", real_url))?;
+        remote = repo.remote_anonymous(&real_url)?;
     }
 
     let mut callbacks = RemoteCallbacks::new();
@@ -128,6 +129,5 @@ pub fn get_current_branch_name(repo: &Repository) -> Result<String, git2::Error>
     let branch_name = head
         .shorthand()
         .ok_or_else(|| git2::Error::from_str("Failed to get branch name from HEAD"))?;
-
     Ok(branch_name.to_string())
 }
