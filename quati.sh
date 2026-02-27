@@ -38,3 +38,12 @@ END_STRING
 
     git commit -m "$message"
 }
+
+function push_commit_ai() {
+    scope=$1
+    context_file=$2
+    commit_ai $scope $context_file
+
+    branch_name=$(git rev-parse --abbrev-ref HEAD)
+    git push origin $branch_name
+}
