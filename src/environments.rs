@@ -13,3 +13,15 @@ pub fn get_ssh_key_path() -> PathBuf {
             Path::new(&home).join(".ssh").join("id_rsa")
         })
 }
+
+pub fn get_custom_local_git_host() -> Result<String, String> {
+    let _ = dotenv::dotenv();
+    env::var("QUATI_CUSTOM_LOCAL_GIT_HOST")
+        .map_err(|_| "QUATI_CUSTOM_LOCAL_GIT_HOST not set".to_string())
+}
+
+pub fn get_custom_remote_git_host() -> Result<String, String> {
+    let _ = dotenv::dotenv();
+    env::var("QUATI_CUSTOM_REMOTE_GIT_HOST")
+        .map_err(|_| "QUATI_CUSTOM_REMOTE_GIT_HOST not set".to_string())
+}

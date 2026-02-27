@@ -4,7 +4,10 @@ use git2::{
 };
 use std::{error::Error as StdError, path::Path};
 
-use crate::{environments::get_ssh_key_path, logger::Logger};
+use crate::{
+    environments::{get_custom_local_git_host, get_custom_remote_git_host, get_ssh_key_path},
+    logger::Logger,
+};
 
 pub fn get_repo(path: Option<&Path>) -> Repository {
     let target = path.unwrap_or_else(|| Path::new("./"));
@@ -48,33 +51,28 @@ pub fn git_diff_as_string(repo: &Repository) -> Result<String, Error> {
 }
 
 pub fn do_commit(repo: &Repository, message: &str) -> Result<Oid, git2::Error> {
-    // 1. Preparar o Index (git add .)
     let mut index = repo.index()?;
     index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
     index.write()?;
 
-    // 2. Gravar a Tree (snapshot do estado atual)
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
 
-    // 3. Definir o Autor e Committer
-    let signature = repo.signature()?; // Usa configs globais do git
+    let signature = repo.signature()?;
 
-    // 4. Obter o Commit Pai (se existir)
     let mut parents = Vec::new();
     if let Ok(head) = repo.head() {
         parents.push(head.peel_to_commit()?);
     }
 
-    // 5. Criar o Commit
     let parents_refs: Vec<&git2::Commit> = parents.iter().collect();
     let commit_oid = repo.commit(
-        Some("HEAD"),  // Atualiza o HEAD para este novo commit
-        &signature,    // Autor
-        &signature,    // Committer
-        message,       // Mensagem
-        &tree,         // Árvore de arquivos
-        &parents_refs, // Lista de pais
+        Some("HEAD"),
+        &signature,
+        &signature,
+        message,
+        &tree,
+        &parents_refs,
     )?;
 
     Ok(commit_oid)
@@ -86,7 +84,6 @@ pub fn create_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::E
         .target()
         .ok_or_else(|| git2::Error::from_str("Failed to get target OID from HEAD"))?;
 
-    // Criar a nova branch
     repo.branch(branch_name, &repo.find_commit(target)?, false)?;
 
     Ok(())
@@ -100,20 +97,21 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
     let mut remote = repo.find_remote("origin")?;
     let url = remote.url().unwrap_or("");
 
-    // If the URL uses the alias, we manually point it to the right place
-    if url.contains("git@ftgit:") {
-        let real_url = url.replace("git@ftgit:", "git@github.com:"); // Use your real HostName here
+    let local_host = get_custom_local_git_host().unwrap_or_else(|e| {
+        eprintln!("Error getting local git host: {}", e);
+        std::process::exit(1);
+    });
+    let remote_host = get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com".to_string());
+
+    if url.contains(&local_host) {
+        let real_url = url.replace(&local_host, &remote_host);
         remote = repo.remote_anonymous(&real_url)?;
     }
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(move |_url, user, _types| {
         let username = user.unwrap_or("git");
         let key_path = get_ssh_key_path();
-        Cred::ssh_key(
-            username, None,      // Public key (git2 can usually derive it)
-            &key_path, // Private key from .env or default
-            None,      // Passphrase
-        )
+        Cred::ssh_key(username, None, &key_path, None)
     });
     let mut options = PushOptions::new();
     options.remote_callbacks(callbacks);

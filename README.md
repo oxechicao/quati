@@ -40,6 +40,9 @@ my workflow.
 
 ## How to use it?
 
+> Currently, the project is defined to push using ssh key. User and Password will be
+> defined in the future.
+
 ```sh
 # check the help
 quati -h
@@ -55,6 +58,21 @@ quati <action> <options>
 | `start`  | Creates and switches to a new branch named `wip/{branch_name}`. If no name is provided, a default name is generated. |
 | `save`   | Performs a local commit using AI-assisted message generation.                                                        |
 | `update` | Performs an AI-assisted commit and automatically pushes the changes to the origin.                                   |
+
+### Custom settings
+
+#### Custom git host and ssh key
+
+```env
+QUATI_SSH_KEY_PATH=/path/to/my/ssh/key
+# Example: QUATI_SSH_KEY_PATH=/Users/username/.ssh/custom_id_rsa
+QUATI_CUSTOM_LOCAL_GIT_HOST=my.custom.git.host
+QUATI_CUSTOM_REMOTE_GIT_HOST=my.custom.git.host
+```
+
+```
+
+```
 
 ## How it works?
 
