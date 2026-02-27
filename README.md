@@ -1,5 +1,12 @@
 # Project Overview
 
+> The South American coati (Nasua nasua), or ring-tailed coati, is a diurnal,
+> raccoon-family mammal found in tropical/subtropical forests from Colombia to northern
+> Argentina. Known for their long, flexible snouts and striped tails, they are highly
+> social, omnivorous, and agile climbers that weigh 2–7.2 kg.
+>
+> ![quati](./quati.jpg)
+
 ## Versioning Guide
 
 Versioning for this project follows these criteria:
