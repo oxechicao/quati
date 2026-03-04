@@ -13,11 +13,21 @@ fn main() {
         } => {
             let _ = start(branch, prefix, no_prefix, no_push, None);
         }
-        Actions::Save { context, scope } => {
-            let _ = save(context, scope, None);
+        Actions::Save {
+            context,
+            scope,
+            emojis,
+            no_emojis,
+        } => {
+            let _ = save(context, scope, emojis, no_emojis, None);
         }
-        Actions::Update { context, scope } => {
-            let _ = update(context, scope, None);
+        Actions::Update {
+            context,
+            scope,
+            emojis,
+            no_emojis,
+        } => {
+            let _ = update(context, scope, emojis, no_emojis, None);
         }
     }
 }

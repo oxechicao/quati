@@ -3,33 +3,24 @@ use crate::{
     logger::Logger,
 };
 
-pub fn generate_commit_message(context: &str, scope: &str, diff: &str) -> Result<String, String> {
+pub fn generate_commit_message(
+    context: &str,
+    scope: &str,
+    diff: &str,
+    show_emojis: bool,
+) -> Result<String, String> {
+    Logger.info(&format!(
+        "Generating commit message {} emojis.",
+        &if show_emojis { "with" } else { "without" }
+    ));
     let mut runner = RealCommandRunner;
-    let response = runner
-        .run(
-            "codex",
-            &[
-                "exec",
-                &format!(
-                    "Read the following git diff:
-{}
-Read the file {} to get more context about the feature.
-No Comentaries, only the commit message.
-DO:
-Write the commit message following the structure of conventional commits, with the following format:
-```
-<type>[optional scope]:<emoji> <description>
-
-[body]
-```
-Write a commit message that follows the conventional commit format.
-The subject should be limited in 50 characters, and the body should be limited in 72 characters.
-The subject in the first line should be a concise summary.
-The scope that should be used in the subject is {}.
-Do a summary of changes before the sections.
-Write the changes in sections.
-Write a detailed list of changes for each section, with bullet points. Use hiphens.
-Add one line before each section title.
+    let title_structure = if show_emojis {
+        "<type>[optional scope]: <emoji> <description>"
+    } else {
+        "<type>[optional scope]: <description>"
+    };
+    let gitmoji = if show_emojis {
+        "
 Use the following table to add an emoji icon in the title according the format and on the beginning of each section:
 | icon | tag                         | description                                                   |
 | ---- | --------------------------- | ------------------------------------------------------------- |
@@ -108,6 +99,37 @@ Use the following table to add an emoji icon in the title according the format a
 | 🦺   | :safety_vest:               | Add or update code related to validation.                     |
 | ✈️   | :airplane:                  | Improve offline support.                                      |
 | 🦖   | :t-rex:                     | Code that adds backwards compatibility.                       |
+    ".to_string()
+    } else {
+        String::new()
+    };
+
+    let response = runner
+        .run(
+            "codex",
+            &[
+                "exec",
+                &format!(
+                    "Read the following git diff:
+{}
+Read the file {} to get more context about the feature.
+No Comentaries, only the commit message.
+DO:
+Write the commit message following the structure of conventional commits, with the following format:
+```
+{}
+
+[body]
+```
+Write a commit message that follows the conventional commit format.
+The subject should be limited in 50 characters, and the body should be limited in 72 characters.
+The subject in the first line should be a concise summary.
+The scope that should be used in the subject is {}.
+Do a summary of changes before the sections.
+Write the changes in sections.
+Write a detailed list of changes for each section, with bullet points. Use hiphens.
+Add one line before each section title.
+{}
 
 Output only the commit message.
 DO NOT:
@@ -115,7 +137,7 @@ Do not use markdown syntax.
 No add blank lines after section title.
 Do not add any comentaries or explanations
 ",
-                    diff, context, scope
+                    diff, context, scope, title_structure, gitmoji
                 ),
             ],
         )

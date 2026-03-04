@@ -25,3 +25,8 @@ pub fn get_custom_remote_git_host() -> Result<String, String> {
     env::var("QUATI_CUSTOM_REMOTE_GIT_HOST")
         .map_err(|_| "QUATI_CUSTOM_REMOTE_GIT_HOST not set".to_string())
 }
+
+pub fn get_gitmoji() -> Result<String, String> {
+    let _ = dotenv::dotenv();
+    env::var("QUATI_GITMOJI_ENABLED").map_err(|_| "QUATI_GITMOJI_ENABLED not set".to_string())
+}

@@ -11,7 +11,13 @@ fn test_save() {
     let temp_dir = tempdir().expect("Failed to create temp directory");
     let path = temp_dir.path();
     Repository::init(path).expect("Failed to initialize git repository");
-    let result = save(Some("feat".into()), Some("auth".into()), Some(path));
+    let result = save(
+        Some("feat".into()),
+        Some("auth".into()),
+        false,
+        false,
+        Some(path),
+    );
     assert!(
         result.is_ok(),
         "Expected save to succeed, got error: {:?}",
@@ -81,7 +87,13 @@ fn test_update() {
 
     std::fs::write(path.join("test.txt"), "hello world").unwrap();
 
-    let result = update(Some("feat".into()), Some("logic".into()), Some(path));
+    let result = update(
+        Some("feat".into()),
+        Some("logic".into()),
+        false,
+        false,
+        Some(path),
+    );
     assert!(result.is_ok(), "Update failed: {:?}", result.err());
     let remote_repo = Repository::open_bare(remote_dir.path()).unwrap();
     assert!(remote_repo.find_reference("refs/heads/master").is_ok());
