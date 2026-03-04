@@ -16,18 +16,20 @@ fn main() {
         Actions::Save {
             context,
             scope,
+            all,
             emojis,
             no_emojis,
         } => {
-            let _ = save(context, scope, emojis, no_emojis, None);
+            let _ = save(context, scope, all, emojis, no_emojis, None);
         }
         Actions::Update {
             context,
             scope,
+            all,
             emojis,
             no_emojis,
         } => {
-            let _ = update(context, scope, emojis, no_emojis, None);
+            let _ = update(context, scope, all, emojis, no_emojis, None);
         }
     }
 }

@@ -14,6 +14,7 @@ fn test_save() {
     let result = save(
         Some("feat".into()),
         Some("auth".into()),
+        true,
         false,
         false,
         Some(path),
@@ -90,6 +91,7 @@ fn test_update() {
     let result = update(
         Some("feat".into()),
         Some("logic".into()),
+        true,
         false,
         false,
         Some(path),

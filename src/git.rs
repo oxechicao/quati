@@ -20,7 +20,15 @@ pub fn get_repo(path: Option<&Path>) -> Repository {
 pub fn get_diff(repo: &Repository) -> Result<Diff<'_>, Error> {
     let mut opts = DiffOptions::new();
     opts.include_untracked(true);
-    let repo_diff = repo.diff_index_to_workdir(None, Some(&mut opts))?;
+    opts.ignore_whitespace(true);
+    opts.ignore_blank_lines(true);
+    let head_tree = repo
+        .head()
+        .and_then(|head| head.resolve())
+        .and_then(|reference| reference.peel_to_tree())
+        .ok();
+    let index = repo.index()?;
+    let repo_diff = repo.diff_tree_to_index(head_tree.as_ref(), Some(&index), Some(&mut opts))?;
     Ok(repo_diff)
 }
 
@@ -103,8 +111,7 @@ pub fn push_branch(repo: &Repository, branch_name: &str) -> Result<(), git2::Err
         std::process::exit(1);
     });
 
-    let remote_host =
-        get_custom_remote_git_host().unwrap_or_else(|_| "git@github.com:".to_string());
+    let remote_host = get_custom_remote_git_host().unwrap();
     if url.contains(&local_host) {
         let real_url = url.replace(&local_host, &remote_host);
         remote = repo.remote_anonymous(&real_url)?;

@@ -67,6 +67,7 @@ quati <action> <options>
 | `--scope`    | Scope used on conventional commit                   |
 | `--no-emoji` | Do not use emojis on commit message                 |
 | `--emoji`    | Use emojis on commit message. Override `--no-emoji` |
+| `--all`      | Add all changes to stage                            |
 
 ### Custom settings
 
@@ -88,6 +89,7 @@ QUATI_GITMOJI_ENABLED=true
 | `QUATI_CUSTOM_LOCAL_GIT_HOST`  | If you are using custom local host config | `QUATI_CUSTOM_LOCAL_GIT_HOST=`  |
 | `QUATI_CUSTOM_REMOTE_GIT_HOST` | If you have a custom remote host          | `QUATI_CUSTOM_REMOTE_GIT_HOST=` |
 | `QUATI_GITMOJI_ENABLED`        | If you want to use emoji.                 | `QUATI_GITMOJI_ENABLED=false`   |
+| `QUATI_STAGE_ALL`              | Stage all changes by default              | `QUATI_STAGE_ALL=false`         |
 
 ## How it works?
 
@@ -208,40 +210,3 @@ The workflow is straightforward. When you run `quati save`, the tool automatical
 | 🦺   | :safety_vest:               | Add or update code related to validation.                     |
 | ✈️   | :airplane:                  | Improve offline support.                                      |
 | 🦖   | :t-rex:                     | Code that adds backwards compatibility.                       |
-
-## Features
-
-### quati start
-
-```gherkin
-Feature: Start new branch
-
-Scenario: Start a new branch with a specific name
-  Given I have a git repository
-  When I run "quati start my-feature-branch"
-  Then a new branch named "wip/my-feature-branch" should be created and checked out
-
-Scenario: Start a new branch without providing a name
-  Given I have a git repository
-  When I run "quati start"
-  Then a new branch with a default name should be created and checked out
-
-Scenario: Start a new branch with an existing name
-  Given I have a git repository
-  And a branch named "wip/existing-branch" already exists
-  When I run "quati start existing-branch"
-  Then a message will be shown indicating that the branch already exists
-```
-
-### quati save
-
-```gherkin
-Feature: Save changes with AI-generated commit message
-
-Scenario: Save changes with AI-generated commit message
-  Given I have unstaged changes in my git repository
-  When I run "quati save"
-  Then all changes should be staged
-  And a commit message should be generated using AI based on the git diff
-  And the changes should be committed with the generated message
-```

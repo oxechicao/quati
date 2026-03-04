@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use git2::Error;
 
 use crate::{
-    environments::get_gitmoji,
+    environments::{get_gitmoji, get_stage_all},
     git::{
         create_branch, do_commit, get_current_branch_name, get_repo, git_add_all,
         git_diff_as_string, push_branch,
@@ -49,7 +49,11 @@ pub enum Actions {
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
 
-        /// Do not use emojis in the commit message
+        /// All all changes to commit, including untracked files
+        #[arg(short, long = "all", default_value_t = false)]
+        all: bool,
+
+        /// Use emojis in the commit message
         #[arg(short, long = "emojis", default_value_t = false)]
         emojis: bool,
 
@@ -66,7 +70,11 @@ pub enum Actions {
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
 
-        /// Do not use emojis in the commit message
+        /// All all changes to commit, including untracked files
+        #[arg(short, long = "all", default_value_t = false)]
+        all: bool,
+
+        /// Use emojis in the commit message
         #[arg(short, long = "emojis", default_value_t = false)]
         emojis: bool,
 
@@ -125,21 +133,23 @@ pub fn start(
 pub fn save(
     context: Option<String>,
     scope: Option<String>,
+    all: bool,
     emojis: bool,
     no_emojis: bool,
     path: Option<&Path>,
 ) -> Result<(), String> {
     Logger.info("Executing save");
     let repo = get_repo(path);
-    let _ = git_add_all(&repo);
+    if all || get_stage_all() {
+        let _ = git_add_all(&repo);
+    }
     let diff = git_diff_as_string(&repo).map_err(|e| format!("Error generating diff: {}", e))?;
     let no_emojis_args = !emojis && !no_emojis;
     let message = prompt::generate_commit_message(
         context.as_deref().unwrap_or(""),
         scope.as_deref().unwrap_or(""),
         &diff,
-        (!no_emojis_args && (emojis || !no_emojis))
-            || (no_emojis_args && get_gitmoji().unwrap_or_else(|_| "false".to_string()) == "true"),
+        (!no_emojis_args && (emojis || !no_emojis)) || (no_emojis_args && get_gitmoji()),
     )
     .unwrap_or_else(|e| {
         eprintln!("Error generating commit message: {}", e);
@@ -154,12 +164,13 @@ pub fn save(
 pub fn update(
     context: Option<String>,
     scope: Option<String>,
+    all: bool,
     emojis: bool,
     no_emojis: bool,
     path: Option<&Path>,
 ) -> Result<(), String> {
     Logger.info("executing update");
-    save(context, scope, emojis, no_emojis, path)?;
+    save(context, scope, all, emojis, no_emojis, path)?;
     let repo = get_repo(path);
     let branch_name = get_current_branch_name(&repo)
         .map_err(|e| format!("Error getting current branch name: {}", e))?;
