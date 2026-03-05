@@ -14,8 +14,8 @@ fn main() {
             let _ = start(branch, prefix, no_prefix, no_push, None);
         }
         Actions::Save {
-            context,
             scope,
+            context,
             all,
             emojis,
             no_emojis,
@@ -23,8 +23,8 @@ fn main() {
             let _ = save(context, scope, all, emojis, no_emojis, None);
         }
         Actions::Update {
-            context,
             scope,
+            context,
             all,
             emojis,
             no_emojis,

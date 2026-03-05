@@ -60,14 +60,9 @@ pub fn git_diff_as_string(repo: &Repository) -> Result<String, Error> {
 
 pub fn do_commit(repo: &Repository, message: &str) -> Result<Oid, git2::Error> {
     let mut index = repo.index()?;
-    index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
-    index.write()?;
-
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
-
     let signature = repo.signature()?;
-
     let mut parents = Vec::new();
     if let Ok(head) = repo.head() {
         parents.push(head.peel_to_commit()?);

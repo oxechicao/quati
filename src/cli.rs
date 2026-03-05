@@ -42,12 +42,13 @@ pub enum Actions {
     },
     /// Action to do the commit with AI Assistance
     Save {
-        /// Path to the file with some context to help the AI to generate the
-        /// commit message
-        context: Option<String>,
-
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
+
+        /// Path to the file with some context to help the AI to generate the
+        /// commit message
+        #[arg(short, long = "context")]
+        context: Option<String>,
 
         /// All all changes to commit, including untracked files
         #[arg(short, long = "all", default_value_t = false)]
@@ -63,12 +64,13 @@ pub enum Actions {
     },
     /// Do the commit with Ai assistance and push the branch to origin
     Update {
-        /// Path to the file with some context to help the AI to generate the
-        /// commit message
-        context: Option<String>,
-
         /// Scope of the commit message, to be used in the subject
         scope: Option<String>,
+
+        /// Path to the file with some context to help the AI to generate the
+        /// commit message
+        #[arg(short, long = "context")]
+        context: Option<String>,
 
         /// All all changes to commit, including untracked files
         #[arg(short, long = "all", default_value_t = false)]
@@ -141,9 +143,11 @@ pub fn save(
     Logger.info("Executing save");
     let repo = get_repo(path);
     if all || get_stage_all() {
+        Logger.info("Stagging all changes");
         let _ = git_add_all(&repo);
     }
     let diff = git_diff_as_string(&repo).map_err(|e| format!("Error generating diff: {}", e))?;
+    Logger.info("Git diff generated successfully");
     let no_emojis_args = !emojis && !no_emojis;
     let message = prompt::generate_commit_message(
         context.as_deref().unwrap_or(""),
@@ -155,9 +159,9 @@ pub fn save(
         eprintln!("Error generating commit message: {}", e);
         String::new()
     });
-
+    Logger.info("Saving changes in commit");
     let _ = do_commit(&repo, &message);
-
+    Logger.info("Done!");
     Ok(())
 }
 

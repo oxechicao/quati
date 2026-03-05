@@ -14,8 +14,15 @@ pub fn generate_commit_message(
         &if show_emojis { "with" } else { "without" }
     ));
     let mut runner = RealCommandRunner;
+    let has_scope = !scope.is_empty();
     let title_structure = if show_emojis {
-        "<type>[optional scope]: <emoji> <description>"
+        if has_scope {
+            &format!("<type>({}): <emoji> <description>", scope)
+        } else {
+            "<type>[optional scope]: <emoji> <description>"
+        }
+    } else if has_scope {
+        &format!("<type>({}): <description>", scope)
     } else {
         "<type>[optional scope]: <description>"
     };
@@ -121,23 +128,22 @@ Write the commit message following the structure of conventional commits, with t
 
 [body]
 ```
-Write a commit message that follows the conventional commit format.
+The first line is the title that follows the conventional commits format, and the body should provide more details about the changes.
 The subject should be limited in 50 characters, and the body should be limited in 72 characters.
 The subject in the first line should be a concise summary.
-The scope that should be used in the subject is {}.
 Do a summary of changes before the sections.
 Write the changes in sections.
 Write a detailed list of changes for each section, with bullet points. Use hiphens.
 Add one line before each section title.
 {}
-
 Output only the commit message.
 DO NOT:
 Do not use markdown syntax.
 No add blank lines after section title.
 Do not add any comentaries or explanations
+Do not add scope at the first line.
 ",
-                    diff, context, scope, title_structure, gitmoji
+                    diff, context, title_structure, gitmoji
                 ),
             ],
         )
