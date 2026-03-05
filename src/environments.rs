@@ -18,7 +18,7 @@ pub fn get_ssh_key_path() -> PathBuf {
 
 pub fn get_custom_local_git_host() -> Result<String, String> {
     let _ = dotenv::dotenv();
-    match get_env("QUATI_CUSTOM_LOCAL_GIT_HOST not set") {
+    match get_env("QUATI_CUSTOM_LOCAL_GIT_HOST") {
         Ok(value) => Ok(value),
         Err(_) => Ok("No custom remote defined".to_string()),
     }
