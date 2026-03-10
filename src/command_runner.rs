@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn should_create_mock_command_runner_instance_correctly() {
-        let runner = MockCommandRunner {
+        let mut runner = MockCommandRunner {
             result: RunResult {
                 success: true,
                 stdout: b"feature/test\n".to_vec(),
@@ -49,5 +49,10 @@ mod tests {
             },
         };
         assert_eq!(runner.result.stdout, b"feature/test\n".to_vec());
+        let result = runner
+            .run("git", &["rev-parse", "--abrev-ref", "HEAD"])
+            .unwrap();
+
+        assert_eq!(result.stdout, b"feature/test\n".to_vec());
     }
 }

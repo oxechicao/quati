@@ -1,6 +1,6 @@
 [package]
 name = "quati"
-version = "0.3.14"
+version = "0.4.2"
 edition = "2024"
 
 [dependencies]
@@ -11,3 +11,7 @@ dotenv = "0.15.0"
 git2 = { version = "0.20.4", features = ["https", "ssh"] }
 predicates = "3.1.4"
 tempfile = "3.26.0"
+
+[dev-dependencies]
+temp-env = "0.3.6"
+serial_test = "3.4.0"

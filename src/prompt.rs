@@ -3,30 +3,97 @@ use crate::{
     logger::Logger,
 };
 
-pub fn generate_commit_message(
-    context: &str,
-    scope: &str,
-    diff: &str,
-    show_emojis: bool,
-) -> Result<String, String> {
-    Logger.info(&format!(
-        "Generating commit message {} emojis.",
-        &if show_emojis { "with" } else { "without" }
-    ));
-    let mut runner = RealCommandRunner;
-    let has_scope = !scope.is_empty();
-    let title_structure = if show_emojis {
-        if has_scope {
-            &format!("<type>({}): <emoji> <description>", scope)
+pub trait AgentRunner {
+    fn run(&self, prompt: &str) -> String;
+}
+
+pub struct CodexAgent;
+impl AgentRunner for CodexAgent {
+    fn run(&self, prompt: &str) -> String {
+        let mut runner = RealCommandRunner;
+        let result = runner.run("codex", &["exec", prompt]).unwrap_or_else(|e| {
+            Logger.error(&format!("Failed to run codex: {}", e));
+            std::process::exit(1);
+        });
+        if result.success {
+            match String::from_utf8(result.stdout) {
+                Ok(s) => s,
+                Err(e) => {
+                    Logger.error(&format!("Failed to convert codex answer to string: {}", e));
+                    std::process::exit(1);
+                }
+            }
         } else {
-            "<type>[optional scope]: <emoji> <description>"
+            Logger.error(&format!(
+                "Codex execution failed with stderr: {}",
+                String::from_utf8_lossy(&result.stderr)
+            ));
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn generate_commit_message(prompt: &str, agent: impl AgentRunner) -> String {
+    agent.run(prompt)
+}
+
+pub struct GeneratePromptArgs {
+    pub context: String,
+    pub scope: String,
+    pub diff: String,
+    pub show_emojis: bool,
+}
+pub fn generate_prompt(args: GeneratePromptArgs) -> String {
+    let title_structure = get_title_structure(args.scope.as_str(), args.show_emojis);
+    let gitmoji = get_gitmoji(args.show_emojis);
+    format!(
+                    "Read the following git diff:
+{}
+Read the file {} to get more context about the feature.
+No Comentaries, only the commit message.
+DO:
+Write the commit message following the structure of conventional commits, with the following format:
+```
+{}
+
+[body]
+```
+The first line is the title that follows the conventional commits format, and the body should provide more details about the changes.
+The subject should be limited in 50 characters, and the body should be limited in 72 characters.
+The subject in the first line should be a concise summary.
+Do a summary of changes before the sections.
+Write the changes in sections.
+Write a detailed list of changes for each section, with bullet points. Use hiphens.
+Add one line before each section title.
+{}
+Output only the commit message.
+DO NOT:
+Do not use markdown syntax.
+No add blank lines after section title.
+Do not add any comentaries or explanations
+Do not add scope at the first line.
+",
+        args.diff, args.context, title_structure, gitmoji
+    )
+}
+
+pub fn get_title_structure(scope: &str, show_emojis: bool) -> String {
+    let has_scope = !scope.is_empty();
+    if show_emojis {
+        if has_scope {
+            format!("<type>({}): <emoji> <description>", scope)
+        } else {
+            "<type>[optional scope]: <emoji> <description>".to_string()
         }
     } else if has_scope {
-        &format!("<type>({}): <description>", scope)
+        format!("<type>({}): <description>", scope)
     } else {
-        "<type>[optional scope]: <description>"
-    };
-    let gitmoji = if show_emojis {
+        "<type>[optional scope]: <description>".to_string()
+    }
+}
+
+pub fn get_gitmoji(show_emojis: bool) -> String {
+    if show_emojis {
         "
 Use the following table to add an emoji icon in the title according the format and on the beginning of each section:
 | icon | tag                         | description                                                   |
@@ -109,53 +176,81 @@ Use the following table to add an emoji icon in the title according the format a
     ".to_string()
     } else {
         String::new()
-    };
+    }
+}
 
-    let response = runner
-        .run(
-            "codex",
-            &[
-                "exec",
-                &format!(
-                    "Read the following git diff:
-{}
-Read the file {} to get more context about the feature.
-No Comentaries, only the commit message.
-DO:
-Write the commit message following the structure of conventional commits, with the following format:
-```
-{}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-[body]
-```
-The first line is the title that follows the conventional commits format, and the body should provide more details about the changes.
-The subject should be limited in 50 characters, and the body should be limited in 72 characters.
-The subject in the first line should be a concise summary.
-Do a summary of changes before the sections.
-Write the changes in sections.
-Write a detailed list of changes for each section, with bullet points. Use hiphens.
-Add one line before each section title.
-{}
-Output only the commit message.
-DO NOT:
-Do not use markdown syntax.
-No add blank lines after section title.
-Do not add any comentaries or explanations
-Do not add scope at the first line.
-",
-                    diff, context, title_structure, gitmoji
-                ),
-            ],
-        )
-        .map_err(|e| format!("Failed: {}", e))?;
-
-    if response.success {
-        let result = String::from_utf8_lossy(&response.stdout).to_string();
-        Logger.info(&format!("Generated commit message:\n{}", result));
-        return Ok(result);
+    struct MockAgent;
+    impl AgentRunner for MockAgent {
+        fn run(&self, prompt: &str) -> String {
+            format!("Generated commit message for prompt: {}", prompt)
+        }
     }
 
-    let err = String::from_utf8_lossy(&response.stderr).to_string();
-    Logger.warn(&format!("Error generating commit message: {}", err));
-    Ok(String::new())
+    #[test]
+    fn test_generate_commit_message() {
+        let prompt = "Test prompt";
+        let agent = MockAgent;
+        let result = generate_commit_message(prompt, agent);
+        assert_eq!(
+            result,
+            "Generated commit message for prompt: Test prompt".to_string()
+        );
+    }
+
+    #[test]
+    fn test_should_generate_prompt_with_emojis() {
+        let args = GeneratePromptArgs {
+            context: "path/to/context.txt".to_string(),
+            scope: "scope".to_string(),
+            diff: "++diff".to_string(),
+            show_emojis: true,
+        };
+        let result = generate_prompt(args);
+        assert!(result.contains("(scope)"));
+        assert!(result.contains("<emoji>"));
+        assert!(result.contains("Use the following table to add an emoji icon in the title according the format and on the beginning of each section:"));
+        assert!(result.contains("path/to/context.txt"));
+        assert!(result.contains("++diff"));
+    }
+
+    #[test]
+    fn test_get_title_structure_with_scope_and_emojis() {
+        let scope = "scope";
+        let show_emojis = true;
+        let result = get_title_structure(scope, show_emojis);
+        assert_eq!(result, "<type>(scope): <emoji> <description>");
+    }
+
+    #[test]
+    fn test_get_title_structure_with_scope_and_without_emojis() {
+        let scope = "test";
+        let show_emojis = false;
+        let result = get_title_structure(scope, show_emojis);
+        assert_eq!(result, "<type>(test): <description>");
+    }
+
+    #[test]
+    fn test_get_title_structure_without_scope_and_emojis() {
+        let scope = "";
+        let show_emojis = true;
+        let result = get_title_structure(scope, show_emojis);
+        assert_eq!(result, "<type>[optional scope]: <emoji> <description>");
+    }
+
+    #[test]
+    fn test_should_return_title_structure_without_scope_and_without_emojis() {
+        let result = get_title_structure("", false);
+        assert_eq!(result, "<type>[optional scope]: <description>");
+    }
+
+    #[test]
+    fn test_should_return_empty_gitmoji_when_show_emojis_is_false() {
+        let show_emojis = false;
+        let result = get_gitmoji(show_emojis);
+        assert_eq!(result, "");
+    }
 }
