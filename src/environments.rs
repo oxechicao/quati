@@ -26,7 +26,7 @@ impl Env {
     }
 
     pub fn get_gitmoji() -> bool {
-        match Self::get_env("QUATI_GITMOJI_ENABLED") {
+        match Self::get_env("QUATI_GITMOJIS_ENABLED") {
             Ok(value) => value == "true",
             Err(_) => false,
         }
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_should_return_true_when_gitmoji_enabled() {
-        with_vars(vec![("QUATI_GITMOJI_ENABLED", Some("true"))], || {
+        with_vars(vec![("QUATI_GITMOJIS_ENABLED", Some("true"))], || {
             assert!(Env::get_gitmoji());
         })
     }
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_should_return_false_when_gitmoji_env_not_set() {
-        with_var("QUATI_GITMOJI_ENABLED", None::<String>, || {
+        with_var("QUATI_GITMOJIS_ENABLED", None::<String>, || {
             assert!(!Env::get_gitmoji());
         })
     }
